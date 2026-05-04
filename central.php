@@ -5,5 +5,4 @@ window.FB_PIXEL_IDS=window.FB_PIXEL_IDS||window.FB_PIXEL_ID||"";
 addScript("https://cdn.utmify.com.br/scripts/pixel/pixel.js",{});
 addScript("https://cdn.utmify.com.br/scripts/utms/latest.js",{"data-utmify-prevent-xcod-sck":true,"data-utmify-prevent-subids":true});
 addScript("/assets/utm-persist.js",{});
-addScript("/assets/meta-pixel-bridge.js",{});
 })();

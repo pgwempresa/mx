@@ -45,12 +45,10 @@ if (!empty($data)) {
 
     persist_transaction_snapshot($data);
     $data['_utmify_status'] = send_utmify_order($data);
-    $data['_meta_purchase'] = send_meta_purchase($data);
 }
 
 json_response([
     'received' => true,
     'id' => $data['id'] ?? ($data['transactionId'] ?? null),
-    'status' => $data['status'] ?? null,
-    'meta_purchase' => $data['_meta_purchase'] ?? null
+    'status' => $data['status'] ?? null
 ]);
