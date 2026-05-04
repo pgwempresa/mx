@@ -80,5 +80,6 @@ if (is_array($existing)) {
 }
 
 persist_transaction_snapshot($payload);
-send_utmify_order($payload);
+$payload['_utmify_status'] = send_utmify_order($payload);
+$payload['_meta_purchase'] = send_meta_purchase($payload);
 json_response($payload, $result['status']);

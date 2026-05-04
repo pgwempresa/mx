@@ -35,6 +35,12 @@ json_response([
         'is_test' => env_first(['UTMIFY_IS_TEST'], 'false') === 'true',
         'last' => kv_get_json('utmify:last')
     ],
+    'meta' => [
+        'configured' => get_meta_pixel_id() !== '' && get_meta_access_token() !== '',
+        'pixel_id_present' => get_meta_pixel_id() !== '',
+        'access_token_present' => get_meta_access_token() !== '',
+        'last' => kv_get_json('meta:last')
+    ],
     'routes' => [
         'create' => '/api/create-mbway.php',
         'check' => '/api/check-mbway.php',

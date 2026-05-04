@@ -62,7 +62,7 @@
   }
 
   function init() {
-    var fbq = ensureFbq();
+    var fbq = window.fbq || (pixelIds.length ? ensureFbq() : null);
     if (!initialized && pixelIds.length) {
       pixelIds.forEach(function (id) { fbq('init', id); });
       loadFacebookScript();

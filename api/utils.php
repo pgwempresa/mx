@@ -222,7 +222,7 @@ function kv_set_json($key, array $value) {
 }
 
 function normalize_tracking_parameters($tracking) {
-    $keys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'src', 'sck'];
+    $keys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'src', 'sck', 'fbclid', 'fbp', 'fbc'];
     $result = [];
 
     if (!is_array($tracking)) {
@@ -247,6 +247,28 @@ function get_utmify_token() {
     $stored = kv_get_json('utmify_credentials');
 
     return is_array($stored) && !empty($stored['api_token']) ? (string) $stored['api_token'] : '';
+}
+
+function get_meta_pixel_id() {
+    $pixelId = env_first(['META_PIXEL_ID', 'FACEBOOK_PIXEL_ID', 'FB_PIXEL_ID'], '');
+    $stored = kv_get_json('meta_credentials');
+
+    if ($pixelId === '' && is_array($stored) && !empty($stored['pixel_id'])) {
+        $pixelId = (string) $stored['pixel_id'];
+    }
+
+    return trim($pixelId);
+}
+
+function get_meta_access_token() {
+    $token = env_first(['META_ACCESS_TOKEN', 'FACEBOOK_ACCESS_TOKEN', 'FB_ACCESS_TOKEN'], '');
+    $stored = kv_get_json('meta_credentials');
+
+    if ($token === '' && is_array($stored) && !empty($stored['access_token'])) {
+        $token = (string) $stored['access_token'];
+    }
+
+    return trim($token);
 }
 
 function get_transaction_id(array $payload) {
@@ -433,6 +455,143 @@ function send_utmify_order(array $payload) {
         'deduped' => false,
         'orderId' => $order['orderId'],
         'statusName' => $order['status'],
+        'httpStatus' => $httpCode ?: 0,
+        'response' => $summary['response'],
+        'error' => $curlError
+    ];
+}
+
+function build_meta_purchase_payload(array $payload) {
+    if (get_utmify_status($payload) !== 'paid') {
+        return null;
+    }
+
+    $txId = get_transaction_id($payload);
+
+    if (!$txId) {
+        return null;
+    }
+
+    $payer = isset($payload['payer']) && is_array($payload['payer']) ? $payload['payer'] : [];
+    $tracking = normalize_tracking_parameters($payload['trackingParameters'] ?? []);
+    $amount = isset($payload['amount']) ? (float) $payload['amount'] : 0.0;
+    [$productId, $productName] = get_utmify_product($payload);
+    $origin = get_request_origin();
+    $eventSourceUrl = $origin . ((string) ($payload['pagePath'] ?? '') ?: '/');
+    $email = strtolower(trim((string) ($payer['email'] ?? '')));
+    $phone = preg_replace('/\D+/', '', (string) ($payer['phone'] ?? ''));
+    $nameParts = preg_split('/\s+/', trim((string) ($payer['name'] ?? '')));
+    $firstName = strtolower($nameParts[0] ?? '');
+    $lastName = strtolower(count($nameParts) > 1 ? end($nameParts) : '');
+    $userData = [
+        'client_user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
+        'fbc' => $tracking['fbc'] ?: (!empty($tracking['fbclid']) ? ('fb.1.' . time() . '.' . $tracking['fbclid']) : null),
+        'fbp' => $tracking['fbp'] ?: null,
+        'em' => $email !== '' ? [hash('sha256', $email)] : [],
+        'ph' => $phone !== '' ? [hash('sha256', $phone)] : [],
+        'fn' => $firstName !== '' ? [hash('sha256', $firstName)] : [],
+        'ln' => $lastName !== '' ? [hash('sha256', $lastName)] : []
+    ];
+
+    foreach ($userData as $key => $value) {
+        if ($value === null || $value === '' || $value === []) {
+            unset($userData[$key]);
+        }
+    }
+
+    return [
+        'data' => [[
+            'event_name' => 'Purchase',
+            'event_time' => time(),
+            'event_id' => 'purchase:' . (string) $txId,
+            'event_source_url' => $eventSourceUrl,
+            'action_source' => 'website',
+            'user_data' => $userData,
+            'custom_data' => [
+                'currency' => 'EUR',
+                'value' => $amount,
+                'order_id' => (string) $txId,
+                'content_ids' => [$productId],
+                'content_name' => $productName,
+                'content_type' => 'product'
+            ]
+        ]]
+    ];
+}
+
+function send_meta_purchase(array $payload) {
+    $event = build_meta_purchase_payload($payload);
+
+    if (!$event) {
+        return [
+            'attempted' => false,
+            'accepted' => false,
+            'reason' => 'not_paid_or_missing_transaction'
+        ];
+    }
+
+    $pixelId = get_meta_pixel_id();
+    $token = get_meta_access_token();
+    $txId = get_transaction_id($payload);
+
+    if ($pixelId === '' || $token === '') {
+        return [
+            'attempted' => false,
+            'accepted' => false,
+            'reason' => 'missing_meta_credentials',
+            'pixel_id_present' => $pixelId !== '',
+            'token_present' => $token !== ''
+        ];
+    }
+
+    $dedupeKey = 'meta:purchase:' . $txId;
+    $previous = kv_get_json($dedupeKey);
+
+    if (is_array($previous) && !empty($previous['ok'])) {
+        return [
+            'attempted' => false,
+            'accepted' => true,
+            'deduped' => true,
+            'httpStatus' => $previous['status'] ?? null
+        ];
+    }
+
+    $ch = curl_init('https://graph.facebook.com/v19.0/' . rawurlencode($pixelId) . '/events?access_token=' . rawurlencode($token));
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($event, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 12);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlError = curl_error($ch);
+    curl_close($ch);
+
+    $ok = $response !== false && $curlError === '' && $httpCode >= 200 && $httpCode < 300;
+    $summary = [
+        'ok' => $ok,
+        'status' => $httpCode ?: 0,
+        'sent_at' => gmdate('c'),
+        'response' => is_string($response) ? substr($response, 0, 500) : '',
+        'error' => $curlError
+    ];
+
+    kv_set_json($dedupeKey, $summary);
+    kv_set_json('meta:last', [
+        'event' => 'Purchase',
+        'orderId' => (string) $txId,
+        'ok' => $ok,
+        'httpStatus' => $httpCode ?: 0,
+        'sent_at' => $summary['sent_at'],
+        'response' => $summary['response'],
+        'error' => $curlError
+    ]);
+
+    return [
+        'attempted' => true,
+        'accepted' => $ok,
+        'deduped' => false,
         'httpStatus' => $httpCode ?: 0,
         'response' => $summary['response'],
         'error' => $curlError

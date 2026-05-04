@@ -3,13 +3,13 @@
  * Captura UTMs da URL na primeira visita e persiste em cookies + localStorage.
  * Funciona em conjunto com o Pixel da Utmify, mas garante fallback independente.
  *
- * UTMs capturados: utm_source, utm_medium, utm_campaign, utm_content, utm_term, src, sck
+ * UTMs capturados: utm_source, utm_medium, utm_campaign, utm_content, utm_term, src, sck, fbclid
  * Persistencia: cookie (30 dias) + localStorage (backup)
  */
 ;(function() {
   'use strict';
 
-  var UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'src', 'sck'];
+  var UTM_KEYS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'src', 'sck', 'fbclid'];
   var COOKIE_DAYS = 30;
   var STORAGE_KEY = '_utms_saved';
 
@@ -82,6 +82,8 @@
     for (var i = 0; i < UTM_KEYS.length; i++) {
       result[UTM_KEYS[i]] = window.getUtmValue(UTM_KEYS[i]);
     }
+    result.fbp = getCookie('_fbp');
+    result.fbc = getCookie('_fbc');
     return result;
   };
 
