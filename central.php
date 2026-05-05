@@ -3,5 +3,4 @@ function addScript(src,attrs){if(document.querySelector('script[src="'+src+'"]')
 window.pixelId="69f3bc2b2659d80c33068fd2";var a=document.createElement("script");a.setAttribute("async","");a.setAttribute("defer","");a.setAttribute("src","https://cdn.utmify.com.br/scripts/pixel/pixel.js");document.head.appendChild(a);
 addScript("https://cdn.utmify.com.br/scripts/utms/latest.js",{"data-utmify-prevent-xcod-sck":true,"data-utmify-prevent-subids":true});
 addScript("/assets/utm-persist.js",{});
-addScript("/assets/facebook-pixel.js",{});
 })();
