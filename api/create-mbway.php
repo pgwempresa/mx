@@ -67,6 +67,8 @@ $payload['payer'] = $payload['payer'] ?? $data['payer'];
 $payload['trackingParameters'] = $payload['trackingParameters'] ?? $data['trackingParameters'];
 $payload['pagePath'] = $payload['pagePath'] ?? $data['pagePath'];
 $payload['paymentDescription'] = $payload['paymentDescription'] ?? $data['paymentDescription'];
+$payload['_created_by_gateway'] = true;
+$payload['_verified_by_gateway'] = false;
 
 persist_transaction_snapshot($payload);
 $payload['_utmify_generated'] = send_utmify_order($payload);

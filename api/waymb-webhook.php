@@ -28,6 +28,32 @@ if (!empty($data)) {
     }
 
     $existing = kv_get_json('tx:' . $txId);
+    $gateway = waymb_request('/transactions/info', ['id' => $txId], 15);
+    $gatewayPayload = null;
+
+    if ($gateway['ok'] && $gateway['status'] >= 200 && $gateway['status'] < 300) {
+        $decoded = json_decode($gateway['body'], true);
+
+        if (is_array($decoded)) {
+            $gatewayPayload = $decoded;
+        }
+    }
+
+    if (is_array($gatewayPayload)) {
+        if (isset($gatewayPayload['status'])) {
+            $gatewayPayload['status'] = normalize_waymb_status($gatewayPayload['status']);
+        }
+
+        $data = $gatewayPayload;
+        $data['_verified_by_gateway'] = true;
+        $data['_gateway_checked_at'] = gmdate('c');
+        $data['_webhook_received'] = true;
+    } else {
+        $data['_verified_by_gateway'] = false;
+        $data['_webhook_received'] = true;
+        $data['_webhook_deferred'] = true;
+        $data['_gateway_error'] = $gateway['error'] ?: ('HTTP ' . ($gateway['status'] ?? 0));
+    }
 
     if (is_array($existing)) {
         if (empty($data['payer']) && !empty($existing['payer'])) {
@@ -52,11 +78,15 @@ if (!empty($data)) {
     }
 
     persist_transaction_snapshot($data);
-    $data['_utmify_status'] = send_utmify_order($data);
+
+    if (!empty($data['_verified_by_gateway'])) {
+        $data['_utmify_status'] = send_utmify_order($data);
+    }
 }
 
 json_response([
     'received' => true,
     'id' => $data['id'] ?? ($data['transactionId'] ?? null),
-    'status' => $data['status'] ?? null
+    'status' => $data['status'] ?? null,
+    'verified' => !empty($data['_verified_by_gateway'])
 ]);

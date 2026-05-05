@@ -11,6 +11,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+$statusToken = env_first(['STATUS_ACCESS_TOKEN', 'API_STATUS_TOKEN'], '');
+$providedToken = $_GET['token'] ?? ($_SERVER['HTTP_X_STATUS_TOKEN'] ?? '');
+
+if ($statusToken === '' || !hash_equals($statusToken, (string) $providedToken)) {
+    json_response([
+        'ok' => false,
+        'error' => 'not_found'
+    ], 404);
+}
+
 $creds = get_waymb_creds();
 $origin = get_request_origin();
 

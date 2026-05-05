@@ -31,7 +31,7 @@ $cached = kv_get_json('tx:' . $data['id']);
 if (is_array($cached) && !empty($cached['status'])) {
     $cached['status'] = normalize_waymb_status($cached['status']);
 
-    if (in_array($cached['status'], ['COMPLETED', 'DECLINED', 'CANCELED', 'CANCELLED', 'FAILED'], true)) {
+    if (!empty($cached['_verified_by_gateway']) && in_array($cached['status'], ['COMPLETED', 'DECLINED', 'CANCELED', 'CANCELLED', 'FAILED'], true)) {
         json_response($cached, 200);
     }
 }
@@ -62,6 +62,9 @@ if ($result['status'] < 200 || $result['status'] >= 300) {
 if (isset($payload['status'])) {
     $payload['status'] = normalize_waymb_status($payload['status']);
 }
+
+$payload['_verified_by_gateway'] = true;
+$payload['_gateway_checked_at'] = gmdate('c');
 
 $existing = kv_get_json('tx:' . $data['id']);
 
