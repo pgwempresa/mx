@@ -107,7 +107,24 @@ function normalize_waymb_create_payload(array $data) {
     $origin = get_request_origin();
 
     $payer = isset($data['payer']) && is_array($data['payer']) ? $data['payer'] : [];
-    $amount = isset($data['amount']) ? (float) $data['amount'] : 12.97;
+    $amountRaw = $data['amount'] ?? null;
+
+    if ($amountRaw === null || $amountRaw === '' || !is_numeric($amountRaw)) {
+        json_response([
+            'error' => 'Valor do pagamento ausente ou inválido.',
+            'missing_fields' => ['amount']
+        ], 422);
+    }
+
+    $amount = round((float) $amountRaw, 2);
+
+    if ($amount <= 0) {
+        json_response([
+            'error' => 'Valor do pagamento precisa ser maior que zero.',
+            'invalid_fields' => ['amount']
+        ], 422);
+    }
+
     $description = isset($data['paymentDescription']) ? (string) $data['paymentDescription'] : 'Transaction Payment';
 
     $data['client_id'] = $creds['client_id'];

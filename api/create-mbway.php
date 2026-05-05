@@ -49,6 +49,14 @@ if (!is_array($payload)) {
     ], 502);
 }
 
+if ($result['status'] < 200 || $result['status'] >= 300) {
+    json_response([
+        'error' => $payload['error'] ?? ($payload['message'] ?? 'WayMB recusou a criação da transação.'),
+        'gateway_status' => $result['status'],
+        'gateway_response' => $payload
+    ], $result['status']);
+}
+
 if (isset($payload['status'])) {
     $payload['status'] = normalize_waymb_status($payload['status']);
 }
