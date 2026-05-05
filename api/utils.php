@@ -120,10 +120,36 @@ function normalize_waymb_create_payload(array $data) {
         ? mb_substr($description, 0, 50)
         : substr($description, 0, 50);
 
-    $payer['email'] = $payer['email'] ?? ('user' . time() . '@example.com');
-    $payer['name'] = $payer['name'] ?? 'Cliente';
-    $payer['document'] = preg_replace('/\D+/', '', (string) ($payer['document'] ?? '999999999'));
-    $payer['phone'] = preg_replace('/\D+/', '', (string) ($payer['phone'] ?? '912345678'));
+    $payer['email'] = trim((string) ($payer['email'] ?? ''));
+    $payer['name'] = trim((string) ($payer['name'] ?? ''));
+    $payer['document'] = preg_replace('/\D+/', '', (string) ($payer['document'] ?? ''));
+    $payer['phone'] = preg_replace('/\D+/', '', (string) ($payer['phone'] ?? ($payer['number'] ?? '')));
+
+    $missing = [];
+
+    if ($payer['name'] === '' || strlen($payer['name']) < 3) {
+        $missing[] = 'name';
+    }
+
+    if ($payer['email'] === '' || !filter_var($payer['email'], FILTER_VALIDATE_EMAIL)) {
+        $missing[] = 'email';
+    }
+
+    if ($payer['document'] === '' || strlen($payer['document']) < 8) {
+        $missing[] = 'document';
+    }
+
+    if ($payer['phone'] === '' || strlen($payer['phone']) < 9) {
+        $missing[] = 'phone';
+    }
+
+    if (!empty($missing)) {
+        json_response([
+            'error' => 'Dados do pagador incompletos para gerar MB WAY.',
+            'missing_fields' => $missing
+        ], 422);
+    }
+
     $data['payer'] = $payer;
     $data['trackingParameters'] = normalize_tracking_parameters($data['trackingParameters'] ?? []);
     $data['pagePath'] = isset($data['pagePath']) ? (string) $data['pagePath'] : '';
