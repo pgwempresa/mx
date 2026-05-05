@@ -19,7 +19,15 @@ if (!empty($data)) {
     }
 
     $txId = get_transaction_id($data);
-    $existing = $txId ? kv_get_json('tx:' . $txId) : null;
+
+    if (!$txId) {
+        json_response([
+            'received' => false,
+            'error' => 'transaction id is required'
+        ], 400);
+    }
+
+    $existing = kv_get_json('tx:' . $txId);
 
     if (is_array($existing)) {
         if (empty($data['payer']) && !empty($existing['payer'])) {

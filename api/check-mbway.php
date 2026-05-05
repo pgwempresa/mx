@@ -31,7 +31,7 @@ $cached = kv_get_json('tx:' . $data['id']);
 if (is_array($cached) && !empty($cached['status'])) {
     $cached['status'] = normalize_waymb_status($cached['status']);
 
-    if (in_array($cached['status'], ['COMPLETED', 'DECLINED'], true)) {
+    if (in_array($cached['status'], ['COMPLETED', 'DECLINED', 'CANCELED', 'CANCELLED', 'FAILED'], true)) {
         json_response($cached, 200);
     }
 }
@@ -49,6 +49,14 @@ if (!is_array($payload)) {
         'error' => 'Resposta inválida da WayMB.',
         'raw' => $result['body']
     ], 502);
+}
+
+if ($result['status'] < 200 || $result['status'] >= 300) {
+    json_response([
+        'error' => $payload['error'] ?? ($payload['message'] ?? 'WayMB recusou a consulta da transação.'),
+        'gateway_status' => $result['status'],
+        'gateway_response' => $payload
+    ], $result['status']);
 }
 
 if (isset($payload['status'])) {

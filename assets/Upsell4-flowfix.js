@@ -9,7 +9,7 @@ function Upsell4(){
   const location=useLocation();
   const state=location.state||{};
   const amount=Number(window.__FUNIL_AMOUNT_GANHO_4||4500);
-  const fee=Number(window.__FUNIL_FEE_4||28.97);
+  const fee=Number(typeof window!=="undefined"&&window.getCentralPrice?window.getCentralPrice("up4",5.70):5.70);
   const {loading,mbwayData,copied,mbwayTimer,mbwayRef,handlePay,handleCopy}=useMbway({amountInCents:Math.round(fee*100),redirectTo:"/upsell-5",customerData:state.customerData,extraState:state});
   return jsx.jsxs("div",{className:"min-h-screen bg-card flex flex-col max-w-[430px] mx-auto",children:[
     jsx.jsx("header",{className:"w-full bg-card border-b border-border flex justify-center items-center py-4 sticky top-0 z-50",children:jsx.jsx("img",{src:metaLogo,alt:"Meta",className:"h-[24px] w-auto"})}),
