@@ -18,10 +18,10 @@
     var path = (window.location.pathname || '').toLowerCase();
     var prices = window.CENTRAL_PRICES || {};
     var key = 'front';
-    if (path.indexOf('/back-redirect') !== -1) return amountNumber(window.__FUNIL_FEE_BACK) || amountNumber(prices.back) || amountNumber(prices.front) || 10.12;
+    if (path.indexOf('/back-redirect') !== -1) return amountNumber(window.__FUNIL_FEE_BACK) || amountNumber(prices.back) || amountNumber(prices.front) || 31.22;
     var match = path.match(/(?:up|upsell-)(\d+)/);
     if (match) key = 'up' + match[1];
-    return amountNumber(prices[key]) || amountNumber(window.__FUNIL_FEE_FRONT) || amountNumber(prices.front) || 10.12;
+    return amountNumber(prices[key]) || amountNumber(window.__FUNIL_FEE_FRONT) || amountNumber(prices.front) || 31.22;
   }
 
   function setLastAmount(value) {
