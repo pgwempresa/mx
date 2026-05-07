@@ -141,28 +141,34 @@ function normalize_waymb_create_payload(array $data) {
     $payer['name'] = trim((string) ($payer['name'] ?? ''));
     $payer['document'] = preg_replace('/\D+/', '', (string) ($payer['document'] ?? ''));
     $payer['phone'] = preg_replace('/\D+/', '', (string) ($payer['phone'] ?? ($payer['number'] ?? '')));
+    $payer['iban'] = strtoupper(preg_replace('/\s+/', '', (string) ($payer['iban'] ?? ($payer['ibanKey'] ?? ($payer['chaveIban'] ?? '')))));
+    $payer['ibanKey'] = $payer['iban'];
+    if ($data['method'] === 'multibanco') { $data['iban'] = $payer['iban']; $data['ibanKey'] = $payer['iban']; }
 
     $missing = [];
+    $method = strtolower((string) $data['method']);
 
     if ($payer['name'] === '' || strlen($payer['name']) < 3) {
         $missing[] = 'name';
     }
 
-    if ($payer['email'] === '' || !filter_var($payer['email'], FILTER_VALIDATE_EMAIL)) {
+    if ($payer['email'] !== '' && !filter_var($payer['email'], FILTER_VALIDATE_EMAIL)) {
         $missing[] = 'email';
     }
 
-    if ($payer['document'] === '' || strlen($payer['document']) < 8) {
-        $missing[] = 'document';
-    }
-
-    if ($payer['phone'] === '' || strlen($payer['phone']) < 9) {
+    if ($method === 'multibanco') {
+        if ($payer['iban'] === '' || strlen($payer['iban']) < 15) {
+            $missing[] = 'iban';
+        }
+    } elseif ($payer['phone'] === '' || strlen($payer['phone']) < 9) {
         $missing[] = 'phone';
     }
 
     if (!empty($missing)) {
         json_response([
-            'error' => 'Dados do pagador incompletos para gerar MB WAY.',
+            'error' => $method === 'multibanco'
+                ? 'Dados do pagador incompletos para gerar Multibanco.'
+                : 'Dados do pagador incompletos para gerar MB WAY.',
             'missing_fields' => $missing
         ], 422);
     }
