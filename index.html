@@ -75,6 +75,37 @@
     (function () {
       function n(s) { return (s || '').toLowerCase().replace(/\s+/g, ' ').trim(); }
       function onConfirmar() { return (window.location.pathname || '').indexOf('/confirmar-saque') !== -1; }
+
+      function onCheckout() { return (window.location.pathname || '').indexOf('/checkout') !== -1 || (window.location.pathname || '').indexOf('/confirmar-saque') !== -1; }
+      function fieldWrapFromLabel(label) {
+        var wrap = label;
+        for (var i = 0; i < 4 && wrap; i++) {
+          if (wrap.tagName === 'DIV' && wrap.querySelector('input')) return wrap;
+          wrap = wrap.parentElement;
+        }
+        return label.parentElement;
+      }
+      function tuneCheckoutFields() {
+        if (!onCheckout()) return;
+        var labels = document.querySelectorAll('label');
+        for (var i = 0; i < labels.length; i++) {
+          var label = labels[i];
+          var text = n(label.textContent);
+          var wrap = fieldWrapFromLabel(label);
+          if (!wrap) continue;
+          if (text === 'e-mail' || text === 'nif') {
+            wrap.style.display = 'none';
+          }
+          if (text.indexOf('contribuição multibanco') !== -1 || text.indexOf('contribuicao multibanco') !== -1) {
+            label.textContent = 'Chave IBAN';
+            var input = wrap.querySelector('input');
+            if (input) {
+              input.placeholder = 'Introduza a chave IBAN';
+              input.autocomplete = 'off';
+            }
+          }
+        }
+      }
       function findTopCtaBlock() {
         var blocks = document.querySelectorAll('div.mx-4.mt-4.transition-all.duration-500.ease-out');
         for (var i = 0; i < blocks.length; i++) {
@@ -92,6 +123,7 @@
         return input ? (input.closest('div.mx-4') || input.parentElement) : null;
       }
       function run() {
+        tuneCheckoutFields();
         if (!onConfirmar()) return;
         var ctaBlock = findTopCtaBlock(), formBlock = findFormBlock();
         if (!ctaBlock || !formBlock || !formBlock.parentElement) return;
