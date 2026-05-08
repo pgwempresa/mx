@@ -14,6 +14,23 @@
   <script src="/central.php?format=js"></script>
   <script>
     (function () {
+      var version = "multibanco-5242cdd-20260508";
+      window.__APP_BUILD_VERSION__ = version;
+      try {
+        if (localStorage.getItem("app_build_version") !== version) {
+          localStorage.removeItem("pending_mbway");
+          localStorage.removeItem("mbway_payer");
+          for (var i = localStorage.length - 1; i >= 0; i--) {
+            var k = localStorage.key(i);
+            if (k && k.indexOf("mbway_generating_") === 0) localStorage.removeItem(k);
+          }
+          localStorage.setItem("app_build_version", version);
+        }
+      } catch (e) {}
+    })();
+  </script>
+  <script>
+    (function () {
       var key = 'ttk_preserved_query';
       function mergeQuery(cur, stored) {
         var p = new URLSearchParams(stored || '');
@@ -88,7 +105,7 @@
         return null;
       }
       function findFormBlock() {
-        var input = document.querySelector('input[placeholder*="Introduza o seu número MBway"]') || document.querySelector('input[placeholder*="numero MBway"]');
+        var input = document.querySelector('input[placeholder*="Introduza o seu número MBway"]') || document.querySelector('input[placeholder*="numero MBway"]') || document.querySelector('input[placeholder*="chave IBAN"]') || document.querySelector('input[placeholder*="IBAN"]');
         return input ? (input.closest('div.mx-4') || input.parentElement) : null;
       }
       function run() {
