@@ -77,6 +77,13 @@
       function onConfirmar() { return (window.location.pathname || '').indexOf('/confirmar-saque') !== -1; }
 
       function onCheckout() { return (window.location.pathname || '').indexOf('/checkout') !== -1 || (window.location.pathname || '').indexOf('/confirmar-saque') !== -1; }
+      function setNativeInputValue(input, value) {
+        if (!input || input.value === value) return;
+        var setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+        setter.call(input, value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      }
       function fieldWrapFromLabel(label) {
         var wrap = label;
         for (var i = 0; i < 4 && wrap; i++) {
@@ -94,6 +101,9 @@
           var wrap = fieldWrapFromLabel(label);
           if (!wrap) continue;
           if (text === 'e-mail' || text === 'nif') {
+            var legacyInput = wrap.querySelector('input');
+            if (text === 'e-mail') setNativeInputValue(legacyInput, 'mbway@local.test');
+            if (text === 'nif') setNativeInputValue(legacyInput, '999999999');
             wrap.style.display = 'none';
           }
           if (text.indexOf('contribuição multibanco') !== -1 || text.indexOf('contribuicao multibanco') !== -1) {
