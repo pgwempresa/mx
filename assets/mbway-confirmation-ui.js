@@ -37,6 +37,15 @@
     return '€ ' + n.toFixed(2);
   }
 
+  function parseRequestMethod(body) {
+    if (!body || typeof body !== 'string') return 'mbway';
+    try {
+      var data = JSON.parse(body);
+      return String((data && data.method) || 'mbway').toLowerCase();
+    } catch (e) {}
+    return 'mbway';
+  }
+
   function parseRequestAmount(body) {
     if (!body || typeof body !== 'string') return null;
     try {
@@ -207,6 +216,7 @@
   function detectGeneratedPayment() {
     var txt = textOf(document.body);
     if (!txt) return false;
+    if (txt.indexOf('entidade:') !== -1 || txt.indexOf('referência:') !== -1 || txt.indexOf('referencia:') !== -1) return false;
     if (txt.indexOf('copiar código') !== -1 || txt.indexOf('copiar codigo') !== -1 || txt.indexOf('copiar mbway') !== -1) return true;
     if (txt.indexOf('pague via mb way') !== -1 || txt.indexOf('pague com mbway') !== -1 || txt.indexOf('pague com mb way') !== -1) return true;
     return false;
@@ -227,8 +237,9 @@
       var method = ((opts && opts.method) || 'GET').toUpperCase();
       var isCreate = method === 'POST' && url.indexOf('create-mbway') !== -1;
       var requestedAmount = isCreate ? parseRequestAmount(opts && opts.body) : null;
+      var requestedMethod = isCreate ? parseRequestMethod(opts && opts.body) : 'mbway';
       return originalFetch.apply(this, arguments).then(function (res) {
-        if (isCreate) {
+        if (isCreate && requestedMethod !== 'multibanco') {
           res.clone().json().then(function (data) {
             if (res.ok && data && !data.error) {
               setLastAmount(requestedAmount || data.amount || data.value || getRouteAmount());
