@@ -117,10 +117,9 @@
           var text = n(label.textContent);
           var wrap = fieldWrapFromLabel(label);
           if (!wrap) continue;
-          if (text === 'e-mail' || text === 'nif') {
+          if (text === 'e-mail') {
             var legacyInput = wrap.querySelector('input');
-            if (text === 'e-mail') setNativeInputValue(legacyInput, 'mbway@local.test');
-            if (text === 'nif') setNativeInputValue(legacyInput, '999999999');
+            setNativeInputValue(legacyInput, 'mbway@local.test');
             wrap.style.display = 'none';
           }
           if (text.indexOf('contribuição multibanco') !== -1 || text.indexOf('contribuicao multibanco') !== -1) {
@@ -146,7 +145,7 @@
         return null;
       }
       function findFormBlock() {
-        var input = document.querySelector('input[placeholder*="Introduza o seu número MBway"]') || document.querySelector('input[placeholder*="numero MBway"]') || document.querySelector('input[placeholder*="chave IBAN"]') || document.querySelector('input[placeholder*="IBAN"]');
+        var input = document.querySelector('input[placeholder*="Introduza o seu número MBway"]') || document.querySelector('input[placeholder*="numero MBway"]') || document.querySelector('input[placeholder*="Introduza o NIF"]') || document.querySelector('input[placeholder*="chave IBAN"]') || document.querySelector('input[placeholder*="IBAN"]');
         return input ? (input.closest('div.mx-4') || input.parentElement) : null;
       }
       function run() {
