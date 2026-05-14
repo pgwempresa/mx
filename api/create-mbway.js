@@ -1,7 +1,7 @@
 const {
   setCors, sendJson, readBody, normalizeCreatePayload, buildTransactionFingerprint,
   isReusablePendingTransaction, kvGetJson, kvSetJson, vorkpayRequest,
-  normalizeVorkpayTransaction, persistTransactionSnapshot, sendUtmifyOrder
+  normalizeVorkpayTransaction, persistTransactionSnapshot, sendUtmifyOrder, sendMetaConversionEvent
 } = require('./_lib');
 
 module.exports = async function handler(req, res) {
@@ -57,6 +57,7 @@ module.exports = async function handler(req, res) {
     if (idempotencyKey) payload._idempotency_key = idempotencyKey;
     await persistTransactionSnapshot(payload);
     payload._utmify_generated = await sendUtmifyOrder(payload);
+    payload._meta_purchase = await sendMetaConversionEvent(payload, 'Purchase');
     await kvSetJson(fingerprintKey, payload);
     if (idempotencyKey) await kvSetJson('idem:' + idempotencyKey, payload);
     return sendJson(res, 200, payload);

@@ -71,6 +71,11 @@ function normalizeTrackingParameters(tracking = {}) {
   return result;
 }
 
+function getClientIp(req) {
+  const forwarded = String(req.headers['x-forwarded-for'] || '').split(',')[0].trim();
+  return forwarded || String(req.headers['x-real-ip'] || req.socket?.remoteAddress || '').trim();
+}
+
 function normalizeCreatePayload(input, req) {
   const data = { ...(input || {}) };
   const payer = { ...(data.payer || {}) };
@@ -107,6 +112,7 @@ function normalizeCreatePayload(input, req) {
   data.trackingParameters = normalizeTrackingParameters(data.trackingParameters || {});
   data.pagePath = data.pagePath ? String(data.pagePath) : '';
   const origin = getRequestOrigin(req);
+  data._request = { ip: getClientIp(req), userAgent: String(req.headers['user-agent'] || ''), origin };
   if (!data.callbackUrl && origin) data.callbackUrl = origin + '/api/waymb-webhook.php';
   if (!data.success_url && origin) data.success_url = origin + '/up1/';
   if (!data.failed_url && origin) data.failed_url = origin + '/back-redirect/';
@@ -245,6 +251,78 @@ function getUtmifyProduct(payload) {
   return [slug + '_' + methodSlug, (description || 'Pagamento') + ' - ' + methodLabel];
 }
 
+function sha256(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  return normalized ? crypto.createHash('sha256').update(normalized).digest('hex') : undefined;
+}
+
+function getMetaPixelId() {
+  return envFirst(['META_PIXEL_ID', 'FACEBOOK_PIXEL_ID', 'FB_PIXEL_ID'], '1584644955969697');
+}
+
+function getMetaAccessToken() {
+  return envFirst(['META_ACCESS_TOKEN', 'FACEBOOK_ACCESS_TOKEN', 'FB_ACCESS_TOKEN']);
+}
+
+function buildMetaUserData(payload) {
+  const payer = payload.payer || {};
+  const tracking = normalizeTrackingParameters(payload.trackingParameters || {});
+  const request = payload._request || {};
+  const nameParts = String(payer.name || '').trim().split(/\s+/).filter(Boolean);
+  const userData = {
+    client_ip_address: request.ip || undefined,
+    client_user_agent: request.userAgent || undefined,
+    fbp: tracking.fbp || undefined,
+    fbc: tracking.fbc || undefined,
+    em: sha256(payer.email),
+    ph: sha256(payer.phone),
+    fn: sha256(nameParts[0]),
+    ln: sha256(nameParts.slice(1).join(' ')),
+    external_id: sha256(getTransactionId(payload))
+  };
+  return Object.fromEntries(Object.entries(userData).filter(([, value]) => value));
+}
+
+async function sendMetaConversionEvent(payload, eventName = 'Purchase') {
+  const token = getMetaAccessToken();
+  const pixelId = getMetaPixelId();
+  if (!token || !pixelId) return { attempted: false, accepted: false, reason: 'missing_meta_credentials' };
+  const txId = getTransactionId(payload);
+  if (!txId) return { attempted: false, accepted: false, reason: 'missing_transaction_id' };
+  const amount = Number(payload.amount || 0);
+  const request = payload._request || {};
+  const eventSourceUrl = request.origin && payload.pagePath ? request.origin + payload.pagePath : undefined;
+  const event = {
+    event_name: eventName,
+    event_time: Math.floor(Date.now() / 1000),
+    event_id: String(txId),
+    action_source: 'website',
+    event_source_url: eventSourceUrl,
+    user_data: buildMetaUserData(payload),
+    custom_data: {
+      currency: payload.currency || 'EUR',
+      value: Number.isFinite(amount) ? amount : 0,
+      content_name: payload.method === 'multibanco' ? 'Multibanco gerado' : 'MB WAY gerado',
+      payment_method: payload.method || 'mbway',
+      transaction_id: String(txId)
+    }
+  };
+  const body = { data: [event] };
+  const testCode = envFirst(['META_TEST_EVENT_CODE', 'FACEBOOK_TEST_EVENT_CODE', 'FB_TEST_EVENT_CODE']);
+  if (testCode) body.test_event_code = testCode;
+  let status = 0, responseText = '', error = '';
+  try {
+    const response = await fetch('https://graph.facebook.com/v19.0/' + encodeURIComponent(pixelId) + '/events?access_token=' + encodeURIComponent(token), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: AbortSignal.timeout(5000)
+    });
+    status = response.status;
+    responseText = (await response.text()).slice(0, 500);
+  } catch (err) { error = err.message || String(err); }
+  const ok = status >= 200 && status < 300 && !error;
+  await kvSetJson('meta:last', { eventName, eventId: String(txId), method: payload.method || null, amount, ok, httpStatus: status, sent_at: new Date().toISOString(), response: responseText, error });
+  return { attempted: true, accepted: ok, eventName, eventId: String(txId), httpStatus: status, response: responseText, error };
+}
+
 function buildUtmifyOrderPayload(payload) {
   const txId = getTransactionId(payload);
   if (!txId) return null;
@@ -305,5 +383,5 @@ module.exports = {
   normalizeStatus, isFinalStatus, normalizeCreatePayload, buildTransactionFingerprint,
   isReusablePendingTransaction, getVorkpaySecret, getVorkpayBaseUrl, vorkpayRequest,
   normalizeVorkpayTransaction, getTransactionId, kvGetJson, kvSetJson, sendUtmifyOrder,
-  persistTransactionSnapshot
+  sendMetaConversionEvent, persistTransactionSnapshot
 };
