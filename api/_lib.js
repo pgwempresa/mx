@@ -87,15 +87,15 @@ function normalizeCreatePayload(input, req) {
   data.paymentDescription = String(data.paymentDescription || 'Transaction Payment').slice(0, 50);
   payer.email = String(payer.email || '').trim();
   payer.name = String(payer.name || '').trim();
-  payer.document = cleanDigits(payer.document || payer.nit || payer.NIT);
-  payer.nit = payer.document;
+  payer.document = cleanDigits(payer.document || payer.nif || payer.NIF);
+  payer.nif = payer.document;
   payer.phone = cleanDigits(payer.phone || payer.number);
   payer.iban = String(payer.iban || payer.ibanKey || payer.chaveIban || '').replace(/\s+/g, '').toUpperCase();
   payer.ibanKey = payer.iban;
   const missing = [];
   if (payer.name.length < 3) missing.push('name');
   if (payer.email && !/^\S+@\S+\.\S+$/.test(payer.email)) missing.push('email');
-  if (data.method === 'multibanco' && payer.document.length < 9) missing.push('nit');
+  if (data.method === 'multibanco' && payer.document.length < 9) missing.push('nif');
   if (data.method !== 'multibanco' && payer.phone.length < 9) missing.push('phone');
   if (missing.length) {
     const err = new Error(data.method === 'multibanco' ? 'Dados do pagador incompletos para gerar Multibanco.' : 'Dados do pagador incompletos para gerar MB WAY.');
@@ -118,7 +118,7 @@ function buildTransactionFingerprint(data) {
   const method = String(data.method || 'mbway').toLowerCase();
   const amount = Number(data.amount || 0).toFixed(2);
   const pagePath = String(data.pagePath || '').replace(/\?.*/, '');
-  const identity = method === 'multibanco' ? (payer.document || payer.nit || payer.name || '') : (payer.phone || payer.number || '');
+  const identity = method === 'multibanco' ? (payer.document || payer.nif || payer.name || '') : (payer.phone || payer.number || '');
   return crypto.createHash('sha256').update([method, amount, pagePath, String(identity).replace(/\s+/g, '').toLowerCase()].join('|')).digest('hex');
 }
 
