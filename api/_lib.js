@@ -220,9 +220,16 @@ function getUtmifyStatus(payload) {
   return 'waiting_payment';
 }
 
+function getPaymentMethodLabel(payload) {
+  const method = String(payload.method || payload.paymentMethod || '').toLowerCase();
+  if (method === 'multibanco' || method === 'reference') return ['multibanco', 'Multibanco'];
+  return ['mbway', 'MB Way'];
+}
+
 function getUtmifyProduct(payload) {
   const path = String(payload.pagePath || '');
   const description = String(payload.paymentDescription || 'Pagamento MB WAY');
+  const [methodSlug, methodLabel] = getPaymentMethodLabel(payload);
   const map = [
     ['/confirmar-saque', ['front', 'Ticket inicial']], ['/back-redirect', ['back_redirect', 'Back redirect']],
     ['/up1', ['up1', 'Upsell 1']], ['/upsell-1', ['up1', 'Upsell 1']],
@@ -231,9 +238,11 @@ function getUtmifyProduct(payload) {
     ['/up4', ['up4', 'Upsell 4']], ['/upsell-4', ['up4', 'Upsell 4']],
     ['/up5', ['upsell-5', 'Upsell 5']], ['/upsell-5', ['upsell-5', 'Upsell 5']]
   ];
-  for (const [needle, product] of map) if (path && path.startsWith(needle)) return product;
-  const slug = description.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'mbway';
-  return [slug, description || 'Pagamento MB WAY'];
+  for (const [needle, product] of map) {
+    if (path && path.startsWith(needle)) return [product[0] + '_' + methodSlug, product[1] + ' - ' + methodLabel];
+  }
+  const slug = description.toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '') || 'pagamento';
+  return [slug + '_' + methodSlug, (description || 'Pagamento') + ' - ' + methodLabel];
 }
 
 function buildUtmifyOrderPayload(payload) {
@@ -243,6 +252,7 @@ function buildUtmifyOrderPayload(payload) {
   const amount = Number(payload.amount || 0);
   const priceInCents = Math.max(0, Math.round(amount * 100));
   const [productId, productName] = getUtmifyProduct(payload);
+  const [, methodLabel] = getPaymentMethodLabel(payload);
   const status = getUtmifyStatus(payload);
   const now = new Date(Date.now() - 300000).toISOString();
   let createdAt = payload.createdAt || payload.created_at || now;
@@ -252,13 +262,13 @@ function buildUtmifyOrderPayload(payload) {
     status,
     orderId: String(txId),
     customer: { name: String(payer.name || 'Cliente'), email: String(payer.email || ''), phone: String(payer.phone || ''), country: 'PT', document: cleanDigits(payer.document) },
-    platform: 'VorkPay',
+    platform: 'VorkPay ' + methodLabel,
     products: [{ id: productId, name: productName, planId: productId, planName: productName, quantity: 1, priceInCents }],
     createdAt,
     commission: { gatewayFeeInCents: 0, totalPriceInCents: priceInCents, userCommissionInCents: priceInCents, currency: 'EUR' },
     refundedAt: null,
     approvedDate: status === 'paid' ? String(payload.approvedDate || payload.paidAt || payload.paid_at || now) : null,
-    paymentMethod: 'unknown',
+    paymentMethod: 'pix',
     trackingParameters: normalizeTrackingParameters(payload.trackingParameters || {})
   };
 }
@@ -280,7 +290,7 @@ async function sendUtmifyOrder(payload) {
   const ok = status >= 200 && status < 300 && !error;
   const summary = { ok, status, sent_at: new Date().toISOString(), response: responseText, error };
   await kvSetJson(dedupeKey, summary);
-  await kvSetJson('utmify:last', { orderId: order.orderId, statusName: order.status, product: order.products[0]?.id || null, amountInCents: order.commission.totalPriceInCents, ok, httpStatus: status, sent_at: summary.sent_at, response: responseText, error });
+  await kvSetJson('utmify:last', { orderId: order.orderId, statusName: order.status, product: order.products[0]?.id || null, productName: order.products[0]?.name || null, platform: order.platform, paymentMethod: order.paymentMethod, amountInCents: order.commission.totalPriceInCents, ok, httpStatus: status, sent_at: summary.sent_at, response: responseText, error });
   return { attempted: true, accepted: ok, deduped: false, orderId: order.orderId, statusName: order.status, httpStatus: status, response: responseText, error };
 }
 
