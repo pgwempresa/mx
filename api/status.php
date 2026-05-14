@@ -21,7 +21,8 @@ if ($statusToken === '' || !hash_equals($statusToken, (string) $providedToken)) 
     ], 404);
 }
 
-$creds = get_waymb_creds();
+$vorkpaySecret = get_vorkpay_secret();
+$vorkpayWebhookSecret = env_first(['VORKPAY_WEBHOOK_SECRET'], '');
 $origin = get_request_origin();
 
 json_response([
@@ -33,11 +34,11 @@ json_response([
         'url_present' => !empty($kvUrl),
         'token_present' => !empty($kvToken)
     ],
-    'waymb' => [
-        'configured' => !empty($creds['client_id']) && !empty($creds['client_secret']),
-        'client_id_present' => !empty($creds['client_id']),
-        'client_secret_present' => !empty($creds['client_secret']),
-        'account_email_present' => !empty($creds['account_email'])
+    'vorkpay' => [
+        'configured' => $vorkpaySecret !== '',
+        'secret_present' => $vorkpaySecret !== '',
+        'webhook_secret_present' => $vorkpayWebhookSecret !== '',
+        'base_url' => get_vorkpay_base_url()
     ],
     'utmify' => [
         'configured' => get_utmify_token() !== '',

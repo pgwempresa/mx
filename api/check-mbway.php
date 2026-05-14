@@ -36,7 +36,7 @@ if (is_array($cached) && !empty($cached['status'])) {
     }
 }
 
-$result = waymb_request('/transactions/info', waymb_info_payload($data['id']), 15);
+$result = vorkpay_request('GET', '/payments/status', ['transactionId' => $data['id']], 15);
 
 if (!$result['ok']) {
     json_response(['error' => 'Gateway error: ' . $result['error']], 502);
@@ -46,51 +46,30 @@ $payload = json_decode($result['body'], true);
 
 if (!is_array($payload)) {
     json_response([
-        'error' => 'Resposta inválida da WayMB.',
+        'error' => 'Resposta inválida da VorkPay.',
         'raw' => $result['body']
     ], 502);
 }
 
 if ($result['status'] < 200 || $result['status'] >= 300) {
     json_response([
-        'error' => $payload['error'] ?? ($payload['message'] ?? 'WayMB recusou a consulta da transação.'),
+        'error' => $payload['error'] ?? 'VorkPay recusou a consulta da transação.',
         'gateway_status' => $result['status'],
         'gateway_response' => $payload
     ], $result['status']);
 }
 
-if (isset($payload['status'])) {
-    $payload['status'] = normalize_waymb_status($payload['status']);
-}
-
+$existing = kv_get_json('tx:' . $data['id']);
+$payload = normalize_vorkpay_transaction($payload, is_array($existing) ? $existing : ['id' => $data['id']]);
+$payload['_gateway'] = 'vorkpay';
 $payload['_verified_by_gateway'] = true;
 $payload['_gateway_checked_at'] = gmdate('c');
 
-$existing = kv_get_json('tx:' . $data['id']);
-
 if (is_array($existing)) {
-    if (empty($payload['payer']) && !empty($existing['payer'])) {
-        $payload['payer'] = $existing['payer'];
-    }
-
-    if (empty($payload['trackingParameters']) && !empty($existing['trackingParameters'])) {
-        $payload['trackingParameters'] = $existing['trackingParameters'];
-    }
-
-    if (empty($payload['pagePath']) && !empty($existing['pagePath'])) {
-        $payload['pagePath'] = $existing['pagePath'];
-    }
-
-    if (empty($payload['amount']) && !empty($existing['amount'])) {
-        $payload['amount'] = $existing['amount'];
-    }
-
-    if (empty($payload['method']) && !empty($existing['method'])) {
-        $payload['method'] = $existing['method'];
-    }
-
-    if (empty($payload['_fingerprint']) && !empty($existing['_fingerprint'])) {
-        $payload['_fingerprint'] = $existing['_fingerprint'];
+    foreach (['payer', 'trackingParameters', 'pagePath', 'amount', 'method', '_fingerprint', 'paymentDescription'] as $key) {
+        if (empty($payload[$key]) && !empty($existing[$key])) {
+            $payload[$key] = $existing[$key];
+        }
     }
 }
 
@@ -99,4 +78,4 @@ if (!empty($payload['_fingerprint'])) {
     kv_set_json('txfinger:' . $payload['_fingerprint'], $payload);
 }
 $payload['_utmify_status'] = send_utmify_order($payload);
-json_response($payload, $result['status']);
+json_response($payload, 200);

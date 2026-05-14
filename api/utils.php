@@ -24,39 +24,6 @@ $kvToken = env_first([
     'UPSTASH_KV_REST_API_TOKEN'
 ]);
 
-function get_waymb_creds() {
-    global $kvUrl, $kvToken;
-
-    $creds = [
-        'client_id' => env_first(['WAYMB_CLIENT_ID'], 'hiago_b9244e48'),
-        'client_secret' => env_first(['WAYMB_CLIENT_SECRET'], ''),
-        'account_email' => env_first(['WAYMB_ACCOUNT_EMAIL'], '')
-    ];
-
-    if ($kvUrl && $kvToken) {
-        $stored = kv_get_json('waymb_credentials');
-
-        if (is_array($stored)) {
-            if (!empty($stored['client_id'])) {
-                $creds['client_id'] = $stored['client_id'];
-            }
-
-            if (!empty($stored['client_secret'])) {
-                $creds['client_secret'] = $stored['client_secret'];
-            }
-
-            if (!empty($stored['account_email'])) {
-                $creds['account_email'] = $stored['account_email'];
-            }
-        }
-    }
-
-    if ($creds['account_email'] === '' && $creds['client_id'] !== '') {
-        $creds['account_email'] = $creds['client_id'] . '@waymb.com';
-    }
-
-    return $creds;
-}
 
 function read_json_input() {
     $input = file_get_contents('php://input');
@@ -91,8 +58,12 @@ function get_request_origin() {
 function normalize_waymb_status($status) {
     $normalized = strtoupper(trim((string) $status));
 
-    if ($normalized === 'PAID' || $normalized === 'APPROVED') {
+    if ($normalized === 'PAID' || $normalized === 'APPROVED' || $normalized === 'SUCCESS') {
         return 'COMPLETED';
+    }
+
+    if ($normalized === 'CANCELLED') {
+        return 'CANCELLED';
     }
 
     if ($normalized === '') {
@@ -112,7 +83,7 @@ function build_transaction_fingerprint(array $data) {
     $amount = isset($data['amount']) ? number_format((float) $data['amount'], 2, '.', '') : '0.00';
     $pagePath = preg_replace('/\?.*/', '', (string) ($data['pagePath'] ?? ''));
     $identity = $method === 'multibanco'
-        ? ($payer['iban'] ?? ($payer['ibanKey'] ?? ($payer['chaveIban'] ?? '')))
+        ? ($payer['name'] ?? ($payer['iban'] ?? ($payer['ibanKey'] ?? ($payer['chaveIban'] ?? ''))))
         : ($payer['phone'] ?? ($payer['number'] ?? ($payer['MBWAYKey'] ?? '')));
     $identity = preg_replace('/\s+/', '', strtolower((string) $identity));
 
@@ -136,17 +107,7 @@ function is_reusable_pending_transaction($payload) {
     return !$createdAt || $createdAt >= time() - 3600;
 }
 
-function waymb_info_payload($txId) {
-    return [
-        'id' => $txId,
-        'transaction_id' => $txId,
-        'transactionId' => $txId,
-        'transactionID' => $txId
-    ];
-}
-
 function normalize_waymb_create_payload(array $data) {
-    $creds = get_waymb_creds();
     $origin = get_request_origin();
 
     $payer = isset($data['payer']) && is_array($data['payer']) ? $data['payer'] : [];
@@ -170,9 +131,6 @@ function normalize_waymb_create_payload(array $data) {
 
     $description = isset($data['paymentDescription']) ? (string) $data['paymentDescription'] : 'Transaction Payment';
 
-    $data['client_id'] = $creds['client_id'];
-    $data['client_secret'] = $creds['client_secret'];
-    $data['account_email'] = $data['account_email'] ?? ($creds['account_email'] ?: 'hiago_b9244e48@waymb.com');
     $data['amount'] = $amount;
     $data['method'] = strtolower((string) ($data['method'] ?? 'mbway'));
     $data['currency'] = $data['currency'] ?? 'EUR';
@@ -200,9 +158,7 @@ function normalize_waymb_create_payload(array $data) {
     }
 
     if ($method === 'multibanco') {
-        if ($payer['iban'] === '' || strlen($payer['iban']) < 15) {
-            $missing[] = 'iban';
-        }
+        // VorkPay Multibanco gera entidade/referência; não precisa de IBAN do cliente.
     } elseif ($payer['phone'] === '' || strlen($payer['phone']) < 9) {
         $missing[] = 'phone';
     }
@@ -235,16 +191,47 @@ function normalize_waymb_create_payload(array $data) {
     return $data;
 }
 
-function waymb_request($path, array $payload, $timeout = 20) {
-    $ch = curl_init('https://api.waymb.com' . $path);
+
+function get_vorkpay_secret() {
+    return env_first(['VORKPAY_SECRET', 'VORKPAY_API_KEY', 'VORKPAY_TOKEN'], '');
+}
+
+function get_vorkpay_base_url() {
+    return rtrim(env_first(['VORKPAY_BASE_URL'], 'https://vorkpay.com/api/v1'), '/');
+}
+
+function vorkpay_request($method, $path, array $payload = [], $timeout = 20) {
+    $secret = get_vorkpay_secret();
+
+    if ($secret === '') {
+        return [
+            'ok' => false,
+            'status' => 500,
+            'body' => '',
+            'error' => 'VORKPAY_SECRET não configurado na Vercel.'
+        ];
+    }
+
+    $method = strtoupper($method);
+    $url = get_vorkpay_base_url() . $path;
+
+    if ($method === 'GET' && !empty($payload)) {
+        $url .= (strpos($url, '?') === false ? '?' : '&') . http_build_query($payload);
+    }
+
+    $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Authorization: Bearer ' . $secret,
         'Content-Type: application/json',
         'User-Agent: pt-main/1.0'
     ]);
     curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+
+    if ($method !== 'GET') {
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
 
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -257,6 +244,46 @@ function waymb_request($path, array $payload, $timeout = 20) {
         'body' => $response,
         'error' => $curlError
     ];
+}
+
+function get_vorkpay_transaction_id(array $payload) {
+    return $payload['transactionId'] ?? ($payload['transaction_id'] ?? ($payload['id'] ?? null));
+}
+
+function normalize_vorkpay_transaction(array $payload, array $fallback = []) {
+    $txId = get_vorkpay_transaction_id($payload) ?: get_transaction_id($fallback);
+
+    if ($txId) {
+        $payload['id'] = $payload['id'] ?? $txId;
+        $payload['transaction_id'] = $payload['transaction_id'] ?? $txId;
+        $payload['transactionId'] = $payload['transactionId'] ?? $txId;
+    }
+
+    $payload['status'] = normalize_waymb_status($payload['status'] ?? ($fallback['status'] ?? 'PENDING'));
+    $payload['amount'] = $payload['amount'] ?? ($fallback['amount'] ?? null);
+    $payload['currency'] = $payload['currency'] ?? ($fallback['currency'] ?? 'EUR');
+
+    $paymentMethod = strtoupper((string) ($payload['paymentMethod'] ?? ($fallback['paymentMethod'] ?? '')));
+    if ($paymentMethod === 'REFERENCE') {
+        $payload['method'] = 'multibanco';
+    } elseif ($paymentMethod === 'MBWAY') {
+        $payload['method'] = 'mbway';
+    } elseif (empty($payload['method']) && !empty($fallback['method'])) {
+        $payload['method'] = $fallback['method'];
+    }
+
+    if (!empty($payload['mb']) && is_array($payload['mb'])) {
+        $payload['referenceData'] = [
+            'entity' => $payload['mb']['entity'] ?? null,
+            'reference' => $payload['mb']['reference'] ?? null,
+            'expiresAt' => $payload['mb']['expiresAt'] ?? null
+        ];
+        $payload['entity'] = $payload['referenceData']['entity'];
+        $payload['reference'] = $payload['referenceData']['reference'];
+        $payload['expiresAt'] = $payload['referenceData']['expiresAt'];
+    }
+
+    return $payload;
 }
 
 function kv_get_json($key) {
@@ -420,7 +447,7 @@ function build_utmify_order_payload(array $payload) {
             'country' => 'PT',
             'document' => preg_replace('/\D+/', '', (string) ($payer['document'] ?? ''))
         ],
-        'platform' => 'WayMB',
+        'platform' => 'VorkPay',
         'products' => [[
             'id' => $productId,
             'name' => $productName,
