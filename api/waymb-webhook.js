@@ -44,3 +44,5 @@ module.exports = async function handler(req, res) {
     return sendJson(res, 500, { received: false, error: 'Erro interno no webhook.', details: error.message || String(error) });
   }
 };
+
+module.exports.config = { api: { bodyParser: false } };

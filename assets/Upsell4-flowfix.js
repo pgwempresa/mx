@@ -24,7 +24,7 @@ function Upsell4(){
         jsx.jsxs("div",{className:"flex justify-between text-sm",children:[jsx.jsx("span",{className:"text-muted-foreground",children:"Taxa final"}),jsx.jsx("span",{className:"text-pink font-semibold",children:eur(fee)})]}),
         jsx.jsxs("div",{className:"border-t border-border pt-3 flex justify-between text-sm",children:[jsx.jsx("span",{className:"text-muted-foreground font-semibold",children:"Total a receber"}),jsx.jsx("span",{className:"text-green-500 font-bold",children:eur(amount+fee)})]})
       ]}),
-      jsx.jsx("button",{onClick:()=>handlePay("mbway"),disabled:loading,className:"w-full h-[52px] bg-[#003772] text-white font-bold text-[15px] rounded-2xl flex items-center justify-center gap-2 disabled:opacity-70",children:loading?jsx.jsx(LoaderIcon,{size:20,className:"animate-spin"}):`PAGAR TAXA - ${eur(fee)}`}),
+      jsx.jsx("button",{onClick:()=>handlePay((localStorage.getItem("withdrawMethod")==="multibanco"?"multibanco":"mbway")),disabled:loading,className:"w-full h-[52px] bg-[#003772] text-white font-bold text-[15px] rounded-2xl flex items-center justify-center gap-2 disabled:opacity-70",children:loading?jsx.jsx(LoaderIcon,{size:20,className:"animate-spin"}):`PAGAR TAXA - ${eur(fee)}`}),
       jsx.jsx("p",{className:"text-[11px] text-center text-muted-foreground",children:"Pagamento seguro via MB WAY"})
     ]}),
     mbwayData&&jsx.jsx(PaymentPopup,{ref:mbwayRef,mbwayData,copied,mbwayTimer,onCopy:handleCopy})
