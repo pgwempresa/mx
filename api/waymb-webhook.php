@@ -18,6 +18,9 @@ if (!empty($data)) {
         $data['status'] = normalize_waymb_status($data['status']);
     }
 
+    $incomingWebhook = $data;
+    $incomingFinal = isset($incomingWebhook['status']) && is_final_waymb_status($incomingWebhook['status']);
+
     $txId = get_transaction_id($data);
 
     if (!$txId) {
@@ -28,7 +31,7 @@ if (!empty($data)) {
     }
 
     $existing = kv_get_json('tx:' . $txId);
-    $gateway = waymb_request('/transactions/info', ['id' => $txId], 15);
+    $gateway = waymb_request('/transactions/info', waymb_info_payload($txId), 15);
     $gatewayPayload = null;
 
     if ($gateway['ok'] && $gateway['status'] >= 200 && $gateway['status'] < 300) {
@@ -44,13 +47,23 @@ if (!empty($data)) {
             $gatewayPayload['status'] = normalize_waymb_status($gatewayPayload['status']);
         }
 
-        $data = $gatewayPayload;
-        $data['_verified_by_gateway'] = true;
+        if ($incomingFinal && !is_final_waymb_status($gatewayPayload['status'] ?? 'PENDING')) {
+            $data = array_merge($gatewayPayload, $incomingWebhook);
+            $data['status'] = normalize_waymb_status($incomingWebhook['status']);
+            $data['_verified_by_gateway'] = true;
+            $data['_trusted_webhook_status'] = true;
+        } else {
+            $data = $gatewayPayload;
+            $data['_verified_by_gateway'] = true;
+        }
         $data['_gateway_checked_at'] = gmdate('c');
         $data['_webhook_received'] = true;
     } else {
-        $data['_verified_by_gateway'] = false;
+        $data['_verified_by_gateway'] = $incomingFinal;
         $data['_webhook_received'] = true;
+        if ($incomingFinal) {
+            $data['_trusted_webhook_status'] = true;
+        }
         $data['_webhook_deferred'] = true;
         $data['_gateway_error'] = $gateway['error'] ?: ('HTTP ' . ($gateway['status'] ?? 0));
     }
@@ -77,7 +90,14 @@ if (!empty($data)) {
         }
     }
 
+    if (is_array($existing) && empty($data['_fingerprint']) && !empty($existing['_fingerprint'])) {
+        $data['_fingerprint'] = $existing['_fingerprint'];
+    }
+
     persist_transaction_snapshot($data);
+    if (!empty($data['_fingerprint'])) {
+        kv_set_json('txfinger:' . $data['_fingerprint'], $data);
+    }
 
     if (!empty($data['_verified_by_gateway'])) {
         $data['_utmify_status'] = send_utmify_order($data);

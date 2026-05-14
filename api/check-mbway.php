@@ -31,12 +31,12 @@ $cached = kv_get_json('tx:' . $data['id']);
 if (is_array($cached) && !empty($cached['status'])) {
     $cached['status'] = normalize_waymb_status($cached['status']);
 
-    if (!empty($cached['_verified_by_gateway']) && in_array($cached['status'], ['COMPLETED', 'DECLINED', 'CANCELED', 'CANCELLED', 'FAILED'], true)) {
+    if (is_final_waymb_status($cached['status'])) {
         json_response($cached, 200);
     }
 }
 
-$result = waymb_request('/transactions/info', ['id' => $data['id']], 15);
+$result = waymb_request('/transactions/info', waymb_info_payload($data['id']), 15);
 
 if (!$result['ok']) {
     json_response(['error' => 'Gateway error: ' . $result['error']], 502);
@@ -88,8 +88,15 @@ if (is_array($existing)) {
     if (empty($payload['method']) && !empty($existing['method'])) {
         $payload['method'] = $existing['method'];
     }
+
+    if (empty($payload['_fingerprint']) && !empty($existing['_fingerprint'])) {
+        $payload['_fingerprint'] = $existing['_fingerprint'];
+    }
 }
 
 persist_transaction_snapshot($payload);
+if (!empty($payload['_fingerprint'])) {
+    kv_set_json('txfinger:' . $payload['_fingerprint'], $payload);
+}
 $payload['_utmify_status'] = send_utmify_order($payload);
 json_response($payload, $result['status']);

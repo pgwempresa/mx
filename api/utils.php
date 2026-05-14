@@ -102,6 +102,49 @@ function normalize_waymb_status($status) {
     return $normalized;
 }
 
+function is_final_waymb_status($status) {
+    return in_array(normalize_waymb_status($status), ['COMPLETED', 'DECLINED', 'CANCELED', 'CANCELLED', 'FAILED', 'REFUSED', 'EXPIRED'], true);
+}
+
+function build_transaction_fingerprint(array $data) {
+    $payer = isset($data['payer']) && is_array($data['payer']) ? $data['payer'] : [];
+    $method = strtolower((string) ($data['method'] ?? 'mbway'));
+    $amount = isset($data['amount']) ? number_format((float) $data['amount'], 2, '.', '') : '0.00';
+    $pagePath = preg_replace('/\?.*/', '', (string) ($data['pagePath'] ?? ''));
+    $identity = $method === 'multibanco'
+        ? ($payer['iban'] ?? ($payer['ibanKey'] ?? ($payer['chaveIban'] ?? '')))
+        : ($payer['phone'] ?? ($payer['number'] ?? ($payer['MBWAYKey'] ?? '')));
+    $identity = preg_replace('/\s+/', '', strtolower((string) $identity));
+
+    return hash('sha256', implode('|', [$method, $amount, $pagePath, $identity]));
+}
+
+function is_reusable_pending_transaction($payload) {
+    if (!is_array($payload) || !get_transaction_id($payload)) {
+        return false;
+    }
+
+    $status = normalize_waymb_status($payload['status'] ?? 'PENDING');
+
+    if (is_final_waymb_status($status)) {
+        return false;
+    }
+
+    $createdAtRaw = (string) ($payload['_created_at'] ?? ($payload['createdAt'] ?? ($payload['created_at'] ?? '')));
+    $createdAt = $createdAtRaw !== '' ? strtotime($createdAtRaw) : false;
+
+    return !$createdAt || $createdAt >= time() - 3600;
+}
+
+function waymb_info_payload($txId) {
+    return [
+        'id' => $txId,
+        'transaction_id' => $txId,
+        'transactionId' => $txId,
+        'transactionID' => $txId
+    ];
+}
+
 function normalize_waymb_create_payload(array $data) {
     $creds = get_waymb_creds();
     $origin = get_request_origin();

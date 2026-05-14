@@ -30,6 +30,16 @@ if (!empty($input['idempotency_key'])) {
 }
 
 $data = normalize_waymb_create_payload($input);
+$fingerprint = build_transaction_fingerprint($data);
+$fingerprintKey = 'txfinger:' . $fingerprint;
+$cachedByFingerprint = kv_get_json($fingerprintKey);
+
+if (is_reusable_pending_transaction($cachedByFingerprint)) {
+    $cachedByFingerprint['idempotent_replay'] = true;
+    $cachedByFingerprint['fingerprint_replay'] = true;
+    json_response($cachedByFingerprint, 200);
+}
+
 $result = waymb_request('/transactions/create', $data, 30);
 
 if (!$result['ok']) {
@@ -69,9 +79,18 @@ $payload['pagePath'] = $payload['pagePath'] ?? $data['pagePath'];
 $payload['paymentDescription'] = $payload['paymentDescription'] ?? $data['paymentDescription'];
 $payload['_created_by_gateway'] = true;
 $payload['_verified_by_gateway'] = false;
+$payload['_created_at'] = $payload['_created_at'] ?? gmdate('c');
+$payload['_fingerprint'] = $fingerprint;
+if ($idempotencyKey !== '') {
+    $payload['_idempotency_key'] = $idempotencyKey;
+}
 
 persist_transaction_snapshot($payload);
 $payload['_utmify_generated'] = send_utmify_order($payload);
+
+if ($fingerprint !== '') {
+    kv_set_json($fingerprintKey, $payload);
+}
 
 if ($idempotencyKey !== '') {
     kv_set_json('idem:' . $idempotencyKey, $payload);
