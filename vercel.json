@@ -1,21 +1,16 @@
 {
-  "functions": {
-    "api/*.php": {
-      "runtime": "vercel-php@0.7.1"
-    }
-  },
   "rewrites": [
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
-    { "source": "/central.php", "destination": "/central.php" },
+    { "source": "/central.php", "destination": "/central.js" },
     { "source": "/checkout", "destination": "/index.html" },
     { "source": "/checkout/", "destination": "/index.html" },
     { "source": "/obrigado", "destination": "/index.html" },
     { "source": "/obrigado/", "destination": "/index.html" },
-    { "source": "/checkout.php", "destination": "/api/checkout.php" },
-    { "source": "/create-transaction.php", "destination": "/api/create-transaction.php" },
-    { "source": "/api/create-mbway.php", "destination": "/api/create-mbway.php" },
-    { "source": "/api/check-mbway.php", "destination": "/api/check-mbway.php" },
-    { "source": "/api/status.php", "destination": "/api/status.php" },
-    { "source": "/api/waymb-webhook.php", "destination": "/api/waymb-webhook.php" }
+    { "source": "/checkout.php", "destination": "/api/checkout.js" },
+    { "source": "/create-transaction.php", "destination": "/api/create-transaction.js" },
+    { "source": "/api/create-mbway.php", "destination": "/api/create-mbway.js" },
+    { "source": "/api/check-mbway.php", "destination": "/api/check-mbway.js" },
+    { "source": "/api/status.php", "destination": "/api/status.js" },
+    { "source": "/api/waymb-webhook.php", "destination": "/api/waymb-webhook.js" }
   ]
 }
