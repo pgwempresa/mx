@@ -37,6 +37,8 @@ function getXpagConfig() {
 
 function normalizeXpagResponse(body, requestPayload, gatewayPayload, config) {
   const transactionId = body.transaction_id || body.request_number || body.reference || requestPayload.external_id;
+  const speiReference = body.reference || body.clabe || body.copy_paste || '';
+  const speiBankName = body.bank_name || 'STP (Sistema de Transferencia y Pagos)';
   return {
     ok: body.ok !== false,
     sandbox: config.mode !== 'live',
@@ -51,20 +53,20 @@ function normalizeXpagResponse(body, requestPayload, gatewayPayload, config) {
     amount: body.amount ?? requestPayload.amount,
     fee: body.fee ?? null,
     currency: body.currency || 'MXN',
-    reference: body.reference || body.copy_paste || '',
-    copy_code: body.clabe || body.copy_paste || body.reference || '',
-    qr_code: body.clabe || body.copy_paste || body.reference || '',
+    reference: speiReference,
+    copy_code: speiReference,
+    qr_code: speiReference,
     clabe: body.clabe || '',
-    bank_name: body.bank_name || 'STP (Sistema de Transferencia y Pagos)',
+    bank_name: speiBankName,
     beneficiary: body.beneficiary || 'XPAG Sandbox',
     referenceData: {
       clabe: body.clabe || '',
-      entity: body.bank_name || 'STP (Sandbox)',
-      reference: body.reference || '',
-      bank_name: body.bank_name || 'STP (Sistema de Transferencia y Pagos)',
+      entity: speiBankName,
+      reference: speiReference,
+      bank_name: speiBankName,
       beneficiary: body.beneficiary || 'XPAG Sandbox'
     },
-    entity: body.bank_name || 'STP (Sandbox)',
+    entity: speiBankName,
     payer: requestPayload.payer,
     _gateway: 'xpag',
     _gateway_mode: config.mode,
