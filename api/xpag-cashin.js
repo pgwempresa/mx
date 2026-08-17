@@ -117,8 +117,6 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const origin = req.headers['x-forwarded-host'] || req.headers.host;
-    const proto = req.headers['x-forwarded-proto'] || 'http';
     const requestPayload = {
       currency: 'MXN',
       amount: Math.round(amount * 100) / 100,
@@ -128,9 +126,6 @@ module.exports = async function handler(req, res) {
       external_id: buildExternalId(input),
       payer: { name, document }
     };
-    if (origin && !String(origin).includes('127.0.0.1') && !String(origin).includes('localhost')) {
-      requestPayload.webhook_url = `${proto}://${origin}/api/xpag-webhook.php`;
-    }
 
     const gatewayPayload = {
       currency: requestPayload.currency,
@@ -140,7 +135,6 @@ module.exports = async function handler(req, res) {
       description: requestPayload.description,
       external_id: requestPayload.external_id
     };
-    if (requestPayload.webhook_url) gatewayPayload.webhook_url = requestPayload.webhook_url;
 
     const response = await fetch(config.baseUrl + '/cashin', {
       method: 'POST',
