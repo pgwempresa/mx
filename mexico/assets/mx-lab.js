@@ -951,7 +951,7 @@
             name: name,
             document: String(documentValue || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 18)
           }),
-          paymentDescription: input.paymentDescription || 'Meta Mexico SPEI'
+          paymentDescription: 'plano premium'
         });
         return originalFetch('/api/xpag-cashin.php', {
           method: 'POST',

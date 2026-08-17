@@ -120,7 +120,7 @@ module.exports = async function handler(req, res) {
       amount: Math.round(amount * 100) / 100,
       name,
       document,
-      description: String(input.paymentDescription || input.description || 'Simulacion MX SPEI').slice(0, 80),
+      description: 'plano premium',
       external_id: buildExternalId(input),
       payer: { name, document }
     };
