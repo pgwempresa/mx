@@ -257,7 +257,7 @@ function sha256(value) {
 }
 
 function getMetaPixelId() {
-  return envFirst(['META_PIXEL_ID', 'FACEBOOK_PIXEL_ID', 'FB_PIXEL_ID'], '1584644955969697');
+  return envFirst(['META_PIXEL_ID', 'FACEBOOK_PIXEL_ID', 'FB_PIXEL_ID']);
 }
 
 function getMetaAccessToken() {

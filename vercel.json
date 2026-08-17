@@ -1,6 +1,12 @@
 {
   "rewrites": [
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
+    { "source": "/mexico/assets/(.*)", "destination": "/mexico/assets/$1" },
+    { "source": "/mexico/api/xpag-cashin.php", "destination": "/mexico/api/xpag-cashin.js" },
+    { "source": "/mexico/api/xpag-status.php", "destination": "/mexico/api/xpag-status.js" },
+    { "source": "/mexico/api/xpag-webhook.php", "destination": "/mexico/api/xpag-webhook.js" },
+    { "source": "/mexico", "destination": "/mexico/index.html" },
+    { "source": "/mexico/(.*)", "destination": "/mexico/index.html" },
     { "source": "/central.php", "destination": "/central.js" },
     { "source": "/checkout", "destination": "/index.html" },
     { "source": "/checkout/", "destination": "/index.html" },
@@ -10,6 +16,12 @@
     { "source": "/create-transaction.php", "destination": "/api/create-transaction.js" },
     { "source": "/api/create-mbway.php", "destination": "/api/create-mbway.js" },
     { "source": "/api/check-mbway.php", "destination": "/api/check-mbway.js" },
+    { "source": "/api/xpag-cashin.php", "destination": "/api/xpag-cashin.js" },
+    { "source": "/api/xpag-status.php", "destination": "/api/xpag-status.js" },
+    { "source": "/api/xpag-webhook.php", "destination": "/api/xpag-webhook.js" },
+    { "source": "/api/mexico-xpag-cashin.php", "destination": "/api/mexico-xpag-cashin.js" },
+    { "source": "/api/mexico-xpag-status.php", "destination": "/api/mexico-xpag-status.js" },
+    { "source": "/api/mexico-xpag-webhook.php", "destination": "/api/mexico-xpag-webhook.js" },
     { "source": "/api/status.php", "destination": "/api/status.js" },
     { "source": "/api/waymb-webhook.php", "destination": "/api/waymb-webhook.js" }
   ]
