@@ -18,18 +18,20 @@ function buildExternalId(input) {
 }
 
 function getXpagConfig() {
-  const requestedMode = String(envFirst(['XPAG_MODE', 'XPAG_ENV'], 'sandbox')).toLowerCase();
-  const liveEnabled = envFirst(['XPAG_ENABLE_LIVE'], 'false') === 'true';
-  const useLive = requestedMode === 'live' && liveEnabled;
-  const clientId = useLive ? envFirst(['XPAG_CLIENT_ID', 'XPAGAMENTOS_CLIENT_ID']) : XPAG_SANDBOX_CLIENT_ID;
-  const clientSecret = useLive ? envFirst(['XPAG_CLIENT_SECRET', 'XPAGAMENTOS_CLIENT_SECRET']) : XPAG_SANDBOX_CLIENT_SECRET;
+  const requestedMode = String(envFirst(['XPAG_MODE', 'XPAG_ENV'], '')).toLowerCase();
+  const realClientId = envFirst(['XPAG_CLIENT_ID', 'XPAGAMENTOS_CLIENT_ID']);
+  const realClientSecret = envFirst(['XPAG_CLIENT_SECRET', 'XPAGAMENTOS_CLIENT_SECRET']);
+  const hasRealCredentials = Boolean(realClientId && realClientSecret);
+  const useLive = requestedMode === 'sandbox' ? false : hasRealCredentials;
+  const clientId = useLive ? realClientId : XPAG_SANDBOX_CLIENT_ID;
+  const clientSecret = useLive ? realClientSecret : XPAG_SANDBOX_CLIENT_SECRET;
   return {
     mode: useLive ? 'live' : 'sandbox',
     baseUrl: envFirst(['XPAG_BASE_URL', 'XPAGAMENTOS_BASE_URL'], XPAG_DEFAULT_BASE_URL).replace(/\/$/, ''),
     clientId,
     clientSecret,
-    liveRequested: requestedMode === 'live',
-    liveEnabled
+    liveRequested: requestedMode === 'live' || hasRealCredentials,
+    liveEnabled: useLive
   };
 }
 
@@ -155,7 +157,17 @@ module.exports = async function handler(req, res) {
 
     if (!response.ok || body.ok === false) {
       return sendJson(res, response.status || 502, {
-        error: 'XPag sandbox rechazo la creacion SPEI.',
+        error: 'XPag rechazo la creacion SPEI.',
+        gateway_status: response.status,
+        gateway_response: body,
+        _gateway_mode: config.mode,
+        _sandbox_only: config.mode !== 'live'
+      });
+    }
+    if (!body.clabe && !body.reference && !body.transaction_id && !body.request_number) {
+      return sendJson(res, 502, {
+        error: 'XPag no devolvio referencia SPEI valida.',
+        expected_fields: ['clabe', 'reference', 'transaction_id', 'request_number'],
         gateway_status: response.status,
         gateway_response: body,
         _gateway_mode: config.mode,
@@ -166,9 +178,9 @@ module.exports = async function handler(req, res) {
     return sendJson(res, 200, normalizeXpagResponse(body, requestPayload, gatewayPayload, config));
   } catch (error) {
     return sendJson(res, 502, {
-      error: 'No fue posible contactar XPag sandbox.',
+      error: 'No fue posible contactar XPag.',
       details: error.message || String(error),
-      _sandbox_only: true
+      _sandbox_only: false
     });
   }
 };

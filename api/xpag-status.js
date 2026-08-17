@@ -31,14 +31,16 @@ function normalizeXpagStatus(status) {
 }
 
 function getXpagConfig() {
-  const requestedMode = String(envFirst(['XPAG_MODE', 'XPAG_ENV'], 'sandbox')).toLowerCase();
-  const liveEnabled = envFirst(['XPAG_ENABLE_LIVE'], 'false') === 'true';
-  const useLive = requestedMode === 'live' && liveEnabled;
+  const requestedMode = String(envFirst(['XPAG_MODE', 'XPAG_ENV'], '')).toLowerCase();
+  const realClientId = envFirst(['XPAG_CLIENT_ID', 'XPAGAMENTOS_CLIENT_ID']);
+  const realClientSecret = envFirst(['XPAG_CLIENT_SECRET', 'XPAGAMENTOS_CLIENT_SECRET']);
+  const hasRealCredentials = Boolean(realClientId && realClientSecret);
+  const useLive = requestedMode === 'sandbox' ? false : hasRealCredentials;
   return {
     mode: useLive ? 'live' : 'sandbox',
     baseUrl: envFirst(['XPAG_BASE_URL', 'XPAGAMENTOS_BASE_URL'], XPAG_DEFAULT_BASE_URL).replace(/\/$/, ''),
-    clientId: useLive ? envFirst(['XPAG_CLIENT_ID', 'XPAGAMENTOS_CLIENT_ID']) : XPAG_SANDBOX_CLIENT_ID,
-    clientSecret: useLive ? envFirst(['XPAG_CLIENT_SECRET', 'XPAGAMENTOS_CLIENT_SECRET']) : XPAG_SANDBOX_CLIENT_SECRET
+    clientId: useLive ? realClientId : XPAG_SANDBOX_CLIENT_ID,
+    clientSecret: useLive ? realClientSecret : XPAG_SANDBOX_CLIENT_SECRET
   };
 }
 
@@ -78,7 +80,7 @@ module.exports = async function handler(req, res) {
   setCors(res);
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method === 'GET' && !req.url.includes('?')) {
-    return sendJson(res, 200, { ok: true, route: 'xpag-status', mode: 'sandbox-only' });
+    return sendJson(res, 200, { ok: true, route: 'xpag-status', mode: getXpagConfig().mode });
   }
   if (!['GET', 'POST'].includes(req.method)) return sendJson(res, 405, { error: 'method not allowed' });
 
@@ -127,10 +129,11 @@ module.exports = async function handler(req, res) {
 
     if (!response.ok || body.ok === false) {
       return sendJson(res, response.status || 502, {
-        error: 'XPag sandbox rejeitou a consulta SPEI.',
+        error: 'XPag rejeitou a consulta SPEI.',
         gateway_status: response.status,
         gateway_response: body,
-        _sandbox_only: true
+        _gateway_mode: config.mode,
+        _sandbox_only: config.mode !== 'live'
       });
     }
 
@@ -146,9 +149,9 @@ module.exports = async function handler(req, res) {
     return sendJson(res, 200, payload);
   } catch (error) {
     return sendJson(res, 502, {
-      error: 'No fue posible consultar XPag sandbox.',
+      error: 'No fue posible consultar XPag.',
       details: error.message || String(error),
-      _sandbox_only: true
+      _sandbox_only: false
     });
   }
 };
