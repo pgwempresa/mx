@@ -953,7 +953,7 @@
           }),
           paymentDescription: input.paymentDescription || 'Meta Mexico SPEI'
         });
-        return originalFetch('/mexico/api/xpag-cashin.php', {
+        return originalFetch('/api/xpag-cashin.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -962,7 +962,7 @@
       if (method === 'POST' && href.indexOf('check-mbway') !== -1) {
         var statusInput = {};
         try { statusInput = JSON.parse((opts && opts.body) || '{}') || {}; } catch (e) {}
-        return originalFetch('/mexico/api/xpag-status.php', {
+        return originalFetch('/api/xpag-status.php', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(statusInput)

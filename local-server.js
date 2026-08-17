@@ -6,21 +6,12 @@ const root = __dirname;
 const port = Number(process.env.PORT || 3000);
 
 const apiRoutes = {
-  '/checkout.php': './api/checkout.js',
-  '/create-transaction.php': './api/create-transaction.js',
-  '/api/create-mbway.php': './api/create-mbway.js',
-  '/api/check-mbway.php': './api/check-mbway.js',
   '/api/xpag-cashin.php': './api/xpag-cashin.js',
   '/api/xpag-status.php': './api/xpag-status.js',
   '/api/xpag-webhook.php': './api/xpag-webhook.js',
-  '/api/mexico-xpag-cashin.php': './api/mexico-xpag-cashin.js',
-  '/api/mexico-xpag-status.php': './api/mexico-xpag-status.js',
-  '/api/mexico-xpag-webhook.php': './api/mexico-xpag-webhook.js',
-  '/mexico/api/xpag-cashin.php': './mexico/api/xpag-cashin.js',
-  '/mexico/api/xpag-status.php': './mexico/api/xpag-status.js',
-  '/mexico/api/xpag-webhook.php': './mexico/api/xpag-webhook.js',
-  '/api/status.php': './api/status.js',
-  '/api/waymb-webhook.php': './api/waymb-webhook.js',
+  '/mexico/api/xpag-cashin.php': './api/xpag-cashin.js',
+  '/mexico/api/xpag-status.php': './api/xpag-status.js',
+  '/mexico/api/xpag-webhook.php': './api/xpag-webhook.js',
 };
 
 const spaRoutes = new Set([
