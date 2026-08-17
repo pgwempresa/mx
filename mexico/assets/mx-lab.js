@@ -1007,6 +1007,28 @@
     }, 400);
   }
 
+  function isMexicoBackRedirectPage() {
+    return /^\/mexico\/back-redirect\/?$/i.test(location.pathname);
+  }
+
+  function goMexicoBackCheckout() {
+    try {
+      sessionStorage.setItem('ttk_back_redirect_offer', JSON.stringify({
+        amount: priceMap.back,
+        amountInCents: Math.round(priceMap.back * 100),
+        source: 'back-redirect',
+        method: 'spei'
+      }));
+      sessionStorage.setItem('ttk_preserved_query', 'mx_lab=1');
+    } catch (e) {}
+    var params = new URLSearchParams(location.search || '');
+    params.set('mx_lab', '1');
+    params.set('offer', 'back');
+    params.set('amount', priceMap.back.toFixed(2));
+    params.set('method', 'spei');
+    location.assign('/mexico/checkout?' + params.toString());
+  }
+
   patchPrices();
   interceptPayments();
   blockUpsellRoutes();
@@ -1026,6 +1048,13 @@
   document.addEventListener('click', function (event) {
     var button = event.target && event.target.closest && event.target.closest('button');
     if (!button) return;
+    if (isMexicoBackRedirectPage() && /CONFIRMAR|LIBERAR|PAGAR|CONTINUAR|Canjear|Resgatar/i.test(button.textContent || '')) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      persistCustomerData();
+      goMexicoBackCheckout();
+      return;
+    }
     if (/CONFIRMAR|LIBERAR|PAGAR|Resgatar|Canjear/i.test(button.textContent || '')) {
       persistCustomerData();
       setTimeout(patchWithdrawalDataCards, 250);
