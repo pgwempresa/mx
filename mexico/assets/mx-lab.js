@@ -886,9 +886,9 @@
     if (referenceBox && referenceBox.textContent && /Banco:|Referencia:/i.test(referenceBox.textContent)) {
       var bankName = 'SPEI';
       referenceBox.innerHTML =
-        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">' +
+        '<div style="display:flex;align-items:center;justify-content:flex-start;gap:6px;margin-bottom:12px">' +
         '<span style="color:#64748b;font-size:16px;line-height:1.25">Banco:</span>' +
-        '<strong style="color:#0f172a;font-size:15px;line-height:1.25;text-align:right;max-width:220px;overflow-wrap:anywhere">' + escapeHtml(bankName) + '</strong>' +
+        '<strong style="color:#0f172a;font-size:15px;line-height:1.25;text-align:left;overflow-wrap:anywhere">' + escapeHtml(bankName) + '</strong>' +
         '</div>' +
         '<div style="display:block">' +
         '<span style="display:block;color:#64748b;font-size:16px;line-height:1.25;margin-bottom:4px">Referencia:</span>' +
