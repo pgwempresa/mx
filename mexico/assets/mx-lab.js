@@ -22,6 +22,51 @@
     return '$' + value.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' MXN';
   }
 
+  function getCookie(name) {
+    var match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/[.$?*|{}()[\]\\/+^]/g, '\\$&') + '=([^;]*)'));
+    return match ? decodeURIComponent(match[1]) : '';
+  }
+
+  function getTrackingParameters() {
+    var params = new URLSearchParams(location.search || '');
+    var fbclid = params.get('fbclid') || '';
+    return {
+      fbp: getCookie('_fbp'),
+      fbc: getCookie('_fbc') || (fbclid ? 'fb.1.' + Date.now() + '.' + fbclid : ''),
+      utm_source: params.get('utm_source') || '',
+      utm_medium: params.get('utm_medium') || '',
+      utm_campaign: params.get('utm_campaign') || '',
+      utm_content: params.get('utm_content') || '',
+      utm_term: params.get('utm_term') || ''
+    };
+  }
+
+  function trackMetaEvent(eventName, data, options) {
+    if (typeof window.fbq !== 'function') return;
+    if (eventName === 'Purchase' && !isMexicoThankYouPage()) return;
+    var payload = Object.assign({
+      currency: 'MXN',
+      value: 0,
+      content_name: 'plano premium',
+      payment_method: 'spei',
+      page_path: location.pathname
+    }, data || {});
+    if (payload.currency === 'EUR') payload.currency = 'MXN';
+    try {
+      if (options && options.eventID) window.fbq('track', eventName, payload, { eventID: String(options.eventID) });
+      else if (/^(SPEIGenerated)$/i.test(eventName)) window.fbq('trackCustom', eventName, payload);
+      else window.fbq('track', eventName, payload);
+    } catch (e) {}
+  }
+
+  function trackOnce(key, eventName, data, options) {
+    try {
+      if (sessionStorage.getItem(key)) return;
+      sessionStorage.setItem(key, '1');
+    } catch (e) {}
+    trackMetaEvent(eventName, data, options);
+  }
+
   function patchPrices() {
     window.CENTRAL_PRICES = Object.assign({}, window.CENTRAL_PRICES || {}, priceMap);
     window.__FUNIL_FEE_FRONT = priceMap.front;
@@ -30,7 +75,7 @@
     window.getCentralPrice = function (key, fallback) {
       return Object.prototype.hasOwnProperty.call(priceMap, key) ? priceMap[key] : fallback;
     };
-    window.trackMetaEvent = function () {};
+    window.trackMetaEvent = trackMetaEvent;
     window.fbq = window.fbq || function () {};
     window.pixelId = 'mx-lab-disabled';
     window.__TTK_PRESERVED_QUERY = 'mx_lab=1';
@@ -376,6 +421,18 @@
     try {
       name = localStorage.getItem('mx_lab_name') || name;
       clabe = localStorage.getItem('mx_lab_clabe') || '';
+    } catch (e) {}
+    try {
+      var paid = JSON.parse(localStorage.getItem('mx_lab_paid_transaction') || '{}') || {};
+      var txId = paid.transaction_id || paid.transactionId || paid.id || paid.external_id || 'mx-paid';
+      trackOnce('mx_purchase_paid_' + txId, 'Purchase', {
+        currency: 'MXN',
+        value: Number(paid.amount || 0) || 0,
+        content_name: 'plano premium',
+        payment_method: 'spei',
+        transaction_id: String(txId),
+        page_path: location.pathname
+      }, { eventID: txId });
     } catch (e) {}
     root.setAttribute('data-mx-lab-thankyou', '1');
     root.innerHTML = [
@@ -941,23 +998,41 @@
         try {
           documentValue = localStorage.getItem('mx_lab_document') || (input.payer && (input.payer.document || input.payer.curp || input.payer.rfc)) || '';
         } catch (e) {}
-        var payload = Object.assign({}, input, {
-          method: 'spei',
-          currency: 'MXN',
-          amount: Number(input.amount || 0),
-          external_id: input.idempotency_key || ('MX-LAB-' + Date.now()),
+	        var payload = Object.assign({}, input, {
+	          method: 'spei',
+	          currency: 'MXN',
+	          amount: Number(input.amount || 0),
+	          external_id: input.idempotency_key || ('MX-LAB-' + Date.now()),
           payer: Object.assign({}, input.payer || {}, {
             name: name,
-            document: String(documentValue || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 18)
-          }),
-          paymentDescription: 'plano premium'
-        });
-        return originalFetch('/api/xpag-cashin.php', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-      }
+	            document: String(documentValue || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 18)
+	          }),
+	          paymentDescription: 'plano premium',
+	          pagePath: location.pathname,
+	          trackingParameters: getTrackingParameters()
+	        });
+	        return originalFetch('/api/xpag-cashin.php', {
+	          method: 'POST',
+	          headers: { 'Content-Type': 'application/json' },
+	          body: JSON.stringify(payload)
+	        }).then(function (response) {
+	          try {
+	            response.clone().json().then(function (data) {
+	              if (!response.ok || !data || data.ok === false) return;
+	              var eventId = data.transaction_id || data.transactionId || data.id || payload.external_id;
+	              trackOnce('mx_spei_generated_' + eventId, 'SPEIGenerated', {
+	                currency: 'MXN',
+	                value: payload.amount,
+	                content_name: 'plano premium',
+	                payment_method: 'spei',
+	                transaction_id: String(eventId || ''),
+	                page_path: location.pathname
+	              });
+	            }).catch(function () {});
+	          } catch (e) {}
+	          return response;
+	        });
+	      }
       if (method === 'POST' && href.indexOf('check-mbway') !== -1) {
         var statusInput = {};
         try { statusInput = JSON.parse((opts && opts.body) || '{}') || {}; } catch (e) {}
@@ -1044,22 +1119,42 @@
     } catch (e) {}
   }, true);
 
-  document.addEventListener('click', function (event) {
-    var button = event.target && event.target.closest && event.target.closest('button');
-    if (!button) return;
-    if (isMexicoBackRedirectPage() && /CONFIRMAR|LIBERAR|PAGAR|CONTINUAR|Canjear|Resgatar/i.test(button.textContent || '')) {
-      event.preventDefault();
+	  document.addEventListener('click', function (event) {
+	    var button = event.target && event.target.closest && event.target.closest('button');
+	    if (!button) return;
+	    if (isMexicoBackRedirectPage() && /CONFIRMAR|LIBERAR|PAGAR|CONTINUAR|Canjear|Resgatar/i.test(button.textContent || '')) {
+	      event.preventDefault();
       event.stopImmediatePropagation();
       persistCustomerData();
       goMexicoBackCheckout();
       return;
-    }
-    if (/CONFIRMAR|LIBERAR|PAGAR|Resgatar|Canjear/i.test(button.textContent || '')) {
-      persistCustomerData();
-      setTimeout(patchWithdrawalDataCards, 250);
-      setTimeout(patchWithdrawalDataCards, 900);
-    }
-  }, true);
+	    }
+	    if (/CONFIRMAR|LIBERAR|PAGAR|Resgatar|Canjear/i.test(button.textContent || '')) {
+	      persistCustomerData();
+	      try {
+	        var params = new URLSearchParams(location.search || '');
+	        var value = Number(params.get('amount') || (params.get('offer') === 'back' ? priceMap.back : priceMap.front));
+	        if (/\/mexico\/checkout|\/mexico\/confirmar-saque/i.test(location.pathname)) {
+	          trackOnce('mx_add_payment_info_' + location.pathname + '_' + value, 'AddPaymentInfo', {
+	            currency: 'MXN',
+	            value: value,
+	            content_name: 'plano premium',
+	            payment_method: 'spei',
+	            page_path: location.pathname
+	          });
+	          trackOnce('mx_initiate_checkout_' + location.pathname + '_' + value, 'InitiateCheckout', {
+	            currency: 'MXN',
+	            value: value,
+	            content_name: 'plano premium',
+	            payment_method: 'spei',
+	            page_path: location.pathname
+	          });
+	        }
+	      } catch (e) {}
+	      setTimeout(patchWithdrawalDataCards, 250);
+	      setTimeout(patchWithdrawalDataCards, 900);
+	    }
+	  }, true);
 
   function run() {
     if (!document.body) return;

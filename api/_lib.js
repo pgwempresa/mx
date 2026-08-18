@@ -292,6 +292,8 @@ async function sendMetaConversionEvent(payload, eventName = 'Purchase') {
   const amount = Number(payload.amount || 0);
   const request = payload._request || {};
   const eventSourceUrl = request.origin && payload.pagePath ? request.origin + payload.pagePath : undefined;
+  const method = String(payload.method || 'spei').toLowerCase();
+  const contentName = method === 'spei' ? 'plano premium' : (method === 'multibanco' ? 'Multibanco gerado' : 'MB WAY gerado');
   const event = {
     event_name: eventName,
     event_time: Math.floor(Date.now() / 1000),
@@ -300,10 +302,10 @@ async function sendMetaConversionEvent(payload, eventName = 'Purchase') {
     event_source_url: eventSourceUrl,
     user_data: buildMetaUserData(payload),
     custom_data: {
-      currency: payload.currency || 'EUR',
+      currency: payload.currency || 'MXN',
       value: Number.isFinite(amount) ? amount : 0,
-      content_name: payload.method === 'multibanco' ? 'Multibanco gerado' : 'MB WAY gerado',
-      payment_method: payload.method || 'mbway',
+      content_name: contentName,
+      payment_method: method,
       transaction_id: String(txId)
     }
   };

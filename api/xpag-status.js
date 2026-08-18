@@ -1,4 +1,4 @@
-const { envFirst, setCors, sendJson, readBody, kvGetJson, kvSetJson } = require('./_lib');
+const { envFirst, setCors, sendJson, readBody, kvGetJson, kvSetJson, sendMetaConversionEvent } = require('./_lib');
 
 const XPAG_DEFAULT_BASE_URL = 'https://api.xpagamentos.com';
 const XPAG_SANDBOX_CLIENT_ID = 'xpagsandbox_00000000';
@@ -63,6 +63,9 @@ function normalizeXpagPayload(body, fallback = {}, config = getXpagConfig()) {
     amount: source.amount ?? body.amount ?? fallback.amount ?? null,
     fee: source.fee ?? body.fee ?? null,
     currency: source.currency || body.currency || 'MXN',
+    pagePath: source.pagePath || body.pagePath || fallback.pagePath || null,
+    trackingParameters: source.trackingParameters || body.trackingParameters || fallback.trackingParameters || {},
+    payer: source.payer || body.payer || fallback.payer || {},
     clabe: source.clabe || body.clabe || fallback.clabe || '',
     bank_name: source.bank_name || body.bank_name || fallback.bank_name || 'STP (Sandbox)',
     beneficiary: source.beneficiary || body.beneficiary || fallback.beneficiary || 'XPAG SANDBOX',
@@ -74,6 +77,25 @@ function normalizeXpagPayload(body, fallback = {}, config = getXpagConfig()) {
     _gateway_checked_at: new Date().toISOString(),
     _raw_gateway_response: body
   };
+}
+
+async function sendPurchaseIfPaid(payload) {
+  if (!payload || normalizeXpagStatus(payload.status) !== 'COMPLETED') {
+    return { attempted: false, accepted: false, reason: 'not_paid' };
+  }
+  const txId = payload.transaction_id || payload.transactionId || payload.id || payload.external_id;
+  if (!txId) return { attempted: false, accepted: false, reason: 'missing_transaction_id' };
+  const dedupeKey = 'meta:purchase:' + txId;
+  const previous = await kvGetJson(dedupeKey);
+  if (previous && previous.accepted) return { ...previous, deduped: true };
+  const meta = await sendMetaConversionEvent({
+    ...payload,
+    method: 'spei',
+    currency: 'MXN',
+    paymentDescription: 'plano premium'
+  }, 'Purchase');
+  await kvSetJson(dedupeKey, { ...meta, sent_at: new Date().toISOString() });
+  return meta;
 }
 
 module.exports = async function handler(req, res) {
@@ -98,7 +120,10 @@ module.exports = async function handler(req, res) {
     const cacheKeys = [transactionId && `xpag:tx:${transactionId}`, requestNumber && `xpag:req:${requestNumber}`, externalId && `xpag:ext:${externalId}`].filter(Boolean);
     for (const key of cacheKeys) {
       const cached = localGet(key) || await kvGetJson(key);
-      if (cached && normalizeXpagStatus(cached.status) === 'COMPLETED') return sendJson(res, 200, cached);
+      if (cached && normalizeXpagStatus(cached.status) === 'COMPLETED') {
+        const meta = await sendPurchaseIfPaid(cached);
+        return sendJson(res, 200, { ...cached, _meta_purchase: meta });
+      }
     }
 
     const config = getXpagConfig();
@@ -137,7 +162,12 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    const payload = normalizeXpagPayload(body, input, config);
+    const fallback = {};
+    for (const key of cacheKeys) {
+      const cached = localGet(key) || await kvGetJson(key);
+      if (cached) Object.assign(fallback, cached);
+    }
+    const payload = normalizeXpagPayload(body, { ...fallback, ...input }, config);
     for (const key of cacheKeys) {
       localSet(key, payload);
       await kvSetJson(key, payload);
@@ -146,7 +176,8 @@ module.exports = async function handler(req, res) {
       localSet('tx:' + payload.transaction_id, payload);
       await kvSetJson('tx:' + payload.transaction_id, payload);
     }
-    return sendJson(res, 200, payload);
+    const meta = await sendPurchaseIfPaid(payload);
+    return sendJson(res, 200, { ...payload, _meta_purchase: meta });
   } catch (error) {
     return sendJson(res, 502, {
       error: 'No fue posible consultar XPag.',

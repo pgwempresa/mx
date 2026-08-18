@@ -1,4 +1,4 @@
-const { envFirst, setCors, sendJson, readBody } = require('./_lib');
+const { envFirst, setCors, sendJson, readBody, kvSetJson } = require('./_lib');
 
 const XPAG_DEFAULT_BASE_URL = 'https://api.xpagamentos.com';
 const XPAG_SANDBOX_CLIENT_ID = 'xpagsandbox_00000000';
@@ -53,6 +53,8 @@ function normalizeXpagResponse(body, requestPayload, gatewayPayload, config) {
     amount: body.amount ?? requestPayload.amount,
     fee: body.fee ?? null,
     currency: body.currency || 'MXN',
+    pagePath: requestPayload.pagePath || null,
+    trackingParameters: requestPayload.trackingParameters || {},
     reference: speiReference,
     copy_code: speiReference,
     qr_code: speiReference,
@@ -171,7 +173,18 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    return sendJson(res, 200, normalizeXpagResponse(body, requestPayload, gatewayPayload, config));
+    const normalized = normalizeXpagResponse(body, {
+      ...requestPayload,
+      pagePath: input.pagePath || null,
+      trackingParameters: input.trackingParameters || {}
+    }, gatewayPayload, config);
+    const cacheKeys = [
+      normalized.transaction_id && `xpag:tx:${normalized.transaction_id}`,
+      normalized.request_number && `xpag:req:${normalized.request_number}`,
+      normalized.external_id && `xpag:ext:${normalized.external_id}`
+    ].filter(Boolean);
+    await Promise.all(cacheKeys.map((key) => kvSetJson(key, normalized)));
+    return sendJson(res, 200, normalized);
   } catch (error) {
     return sendJson(res, 502, {
       error: 'No fue posible contactar XPag.',
