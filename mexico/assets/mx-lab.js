@@ -845,32 +845,46 @@
 
   function extractSpeiReference(text) {
     var value = String(text || '');
-    var match = value.match(/sbx_[a-z0-9]{10,}/i) || value.match(/\b[a-z0-9]{22,}\b/i) || value.match(/\b[0-9]{18}\b/);
+    var match = value.match(/sbx_[a-z0-9]{10,}/i) || value.match(/\b[a-z0-9]{22,}\b/i) || value.match(/\b[0-9]{12,22}\b/);
     return match ? match[0] : '';
   }
 
   function patchSpeiReferenceLayout() {
-    var reference = getCurrentSpeiReference();
-    var referenceBox = null;
-    document.querySelectorAll('p,span,div,strong').forEach(function (el) {
-      if (el.children.length > 2) return;
-      var text = (el.textContent || '').trim();
-      var found = extractSpeiReference(text);
-      if (!found) return;
-      rememberSpeiReference(found);
-      reference = reference || found;
-      el.classList.add('mx-lab-reference-text');
-      var box = el.closest('div');
-      if (box) {
-        box.classList.add('mx-lab-reference-box');
-        referenceBox = referenceBox || box;
-      }
+    var copyButtons = Array.prototype.filter.call(document.querySelectorAll('button'), function (button) {
+      return button.classList.contains('mx-lab-copy-reference-btn') || /copiar.*(?:referencia|spei)|(?:referencia|spei).*copiar/i.test(button.textContent || '');
     });
-    reference = reference || getCurrentSpeiReference();
+    var heading = Array.prototype.find.call(document.querySelectorAll('p,span,div,strong,h1,h2,h3'), function (el) {
+      var text = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      return /^(?:PAGUE|PAGA)(?: POR| VIA)? SPEI$/i.test(text);
+    });
+    var paymentCard = heading;
+    while (paymentCard && paymentCard !== document.body) {
+      var cardText = (paymentCard.textContent || '').replace(/\s+/g, ' ');
+      if (/Banco:/i.test(cardText) && /Referencia:/i.test(cardText)) break;
+      paymentCard = paymentCard.parentElement;
+    }
+    if (!paymentCard || paymentCard === document.body) {
+      copyButtons.forEach(function (button) { button.remove(); });
+      return;
+    }
+
+    copyButtons.forEach(function (button) {
+      if (!paymentCard.contains(button)) button.remove();
+    });
+
+    var reference = getCurrentSpeiReference();
+    var referenceBox = Array.prototype.filter.call(paymentCard.querySelectorAll('div'), function (el) {
+      var text = (el.textContent || '').replace(/\s+/g, ' ');
+      return /Banco:/i.test(text) && /Referencia:/i.test(text);
+    }).sort(function (a, b) {
+      return (a.textContent || '').length - (b.textContent || '').length;
+    })[0] || null;
+
+    if (!reference && referenceBox) reference = extractSpeiReference(referenceBox.textContent || '');
+    if (reference) rememberSpeiReference(reference);
+    if (referenceBox) referenceBox.classList.add('mx-lab-reference-box');
     if (referenceBox && referenceBox.textContent && /Banco:|Referencia:/i.test(referenceBox.textContent)) {
-      var bankName = 'STP (Sistema de Transferencia y Pagos)';
-      var bankMatch = referenceBox.textContent.match(/Banco:\s*([^R]+?)(?:Referencia:|$)/i);
-      if (bankMatch && bankMatch[1] && bankMatch[1].trim().length > 3) bankName = bankMatch[1].trim();
+      var bankName = 'SPEI';
       referenceBox.innerHTML =
         '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">' +
         '<span style="color:#64748b;font-size:16px;line-height:1.25">Banco:</span>' +
@@ -882,20 +896,15 @@
         '</div>';
     }
     if (reference && referenceBox) {
-      var paymentCard = referenceBox.closest('section') || referenceBox.parentElement;
-      while (paymentCard && paymentCard !== document.body && !/PAGUE VIA SPEI|PAGA VIA SPEI|PAGA POR SPEI/i.test(paymentCard.textContent || '')) {
-        paymentCard = paymentCard.parentElement;
-      }
-      var host = paymentCard && paymentCard !== document.body ? paymentCard : referenceBox.parentElement;
-      if (host && !host.querySelector('.mx-lab-copy-reference-btn')) {
-        var copyButton = document.createElement('button');
-        copyButton.type = 'button';
-        copyButton.className = 'mx-lab-copy-reference-btn';
-        copyButton.setAttribute('data-mx-lab-copy', '1');
-        copyButton.setAttribute('data-mx-lab-reference', reference);
-        copyButton.textContent = 'Copiar referencia SPEI';
-        referenceBox.insertAdjacentElement('afterend', copyButton);
-      }
+      var copyButton = Array.prototype.find.call(paymentCard.querySelectorAll('button'), function (button) {
+        return button.classList.contains('mx-lab-copy-reference-btn') || /copiar.*(?:referencia|spei)|(?:referencia|spei).*copiar/i.test(button.textContent || '');
+      }) || document.createElement('button');
+      copyButton.type = 'button';
+      copyButton.classList.add('mx-lab-copy-reference-btn');
+      copyButton.setAttribute('data-mx-lab-copy', '1');
+      copyButton.setAttribute('data-mx-lab-reference', reference);
+      copyButton.textContent = 'Copiar referencia SPEI';
+      referenceBox.insertAdjacentElement('afterend', copyButton);
     }
     document.querySelectorAll('button').forEach(function (button) {
       var text = (button.textContent || '').replace(/\s+/g, ' ').trim();
