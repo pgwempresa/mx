@@ -374,6 +374,7 @@
     var style = document.createElement('style');
     style.id = 'mx-lab-style';
     style.textContent = [
+      'html,body{overflow-x:hidden!important;background:#f5f5f5!important}',
       'body{padding-bottom:0!important}',
       '#root{max-width:430px;margin:0 auto}',
       '#mx-lab-badge{display:none!important}',
@@ -401,6 +402,9 @@
       '.mx-lab-document-input:focus{border-color:#1877F2!important}',
       '.mx-lab-clabe-input{width:100%!important;height:44px!important;border:2px solid #E5E7EB!important;border-radius:10px!important;padding:0 12px!important;font-size:15px!important;color:#111827!important;background:#fff!important;outline:none!important}',
       '.mx-lab-clabe-input:focus{border-color:#1877F2!important}',
+      '.mx-lab-reference-text{display:block!important;max-width:100%!important;min-width:0!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:break-all!important;line-height:1.35!important}',
+      '.mx-lab-reference-box{max-width:100%!important;min-width:0!important;overflow:hidden!important;box-sizing:border-box!important}',
+      '.mx-lab-reference-box *{min-width:0!important;max-width:100%!important}',
       'button:has(img[src*="spei-logo"]) + button:has(img[src*="spei-logo"]){display:none!important}',
       'button:has(img[alt="SPEI"]) + button:has(img[alt="SPEI"]){display:none!important}'
     ].join('\n');
@@ -819,6 +823,56 @@
     });
   }
 
+  function getCurrentSpeiReference() {
+    try {
+      var pending = JSON.parse(localStorage.getItem('pending_mbway') || '{}') || {};
+      var data = pending.data || {};
+      return data.copy_code || data.qr_code || data.reference || data.ref ||
+        (data.referenceData && (data.referenceData.reference || data.referenceData.clabe)) ||
+        data.clabe || localStorage.getItem('mx_lab_spei_reference') || '';
+    } catch (e) {
+      try { return localStorage.getItem('mx_lab_spei_reference') || ''; } catch (_) { return ''; }
+    }
+  }
+
+  function rememberSpeiReference(value) {
+    var clean = String(value || '').trim();
+    if (!clean || clean.length < 8) return;
+    try { localStorage.setItem('mx_lab_spei_reference', clean); } catch (e) {}
+  }
+
+  function extractSpeiReference(text) {
+    var value = String(text || '');
+    var match = value.match(/sbx_[a-z0-9]{10,}/i) || value.match(/\b[a-z0-9]{22,}\b/i) || value.match(/\b[0-9]{18}\b/);
+    return match ? match[0] : '';
+  }
+
+  function patchSpeiReferenceLayout() {
+    var reference = getCurrentSpeiReference();
+    document.querySelectorAll('p,span,div,strong').forEach(function (el) {
+      if (el.children.length > 2) return;
+      var text = (el.textContent || '').trim();
+      var found = extractSpeiReference(text);
+      if (!found) return;
+      rememberSpeiReference(found);
+      reference = reference || found;
+      el.classList.add('mx-lab-reference-text');
+      var box = el.closest('div');
+      if (box) box.classList.add('mx-lab-reference-box');
+    });
+    reference = reference || getCurrentSpeiReference();
+    document.querySelectorAll('button').forEach(function (button) {
+      var text = (button.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!/copiar.*(?:referencia|spei)|(?:referencia|spei).*copiar/i.test(text)) return;
+      button.type = 'button';
+      button.disabled = false;
+      button.style.pointerEvents = 'auto';
+      button.style.opacity = '1';
+      if (!button.getAttribute('data-mx-lab-copy')) button.setAttribute('data-mx-lab-copy', '1');
+      if (reference) button.setAttribute('data-mx-lab-reference', reference);
+    });
+  }
+
   function normalizeMoneyNodes(root) {
     var walker = document.createTreeWalker(root || document.body, NodeFilter.SHOW_TEXT);
     var nodes = [];
@@ -1020,6 +1074,7 @@
 	            response.clone().json().then(function (data) {
 	              if (!response.ok || !data || data.ok === false) return;
 	              var eventId = data.transaction_id || data.transactionId || data.id || payload.external_id;
+	              rememberSpeiReference(data.copy_code || data.qr_code || data.reference || data.ref || data.clabe || (data.referenceData && (data.referenceData.reference || data.referenceData.clabe)) || '');
 	              trackOnce('mx_spei_generated_' + eventId, 'SPEIGenerated', {
 	                currency: 'MXN',
 	                value: payload.amount,
@@ -1122,6 +1177,26 @@
 	  document.addEventListener('click', function (event) {
 	    var button = event.target && event.target.closest && event.target.closest('button');
 	    if (!button) return;
+      if (button.getAttribute('data-mx-lab-copy') === '1' || /copiar.*(?:referencia|spei)|(?:referencia|spei).*copiar/i.test(button.textContent || '')) {
+        var code = button.getAttribute('data-mx-lab-reference') || getCurrentSpeiReference();
+        if (code) {
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          var original = button.textContent;
+          var done = function () {
+            button.textContent = 'Referencia copiada';
+            setTimeout(function () { button.textContent = original || 'Copiar referencia SPEI'; }, 1800);
+          };
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(code).then(done).catch(function () {
+              window.prompt('Copia la referencia SPEI:', code);
+            });
+          } else {
+            window.prompt('Copia la referencia SPEI:', code);
+          }
+          return;
+        }
+      }
 	    if (isMexicoBackRedirectPage() && /CONFIRMAR|LIBERAR|PAGAR|CONTINUAR|Canjear|Resgatar/i.test(button.textContent || '')) {
 	      event.preventDefault();
       event.stopImmediatePropagation();
@@ -1162,9 +1237,10 @@
     if (renderMexicoThankYouPage()) return;
     walk(document.body);
     normalizeMoneyNodes(document.body);
-    patchSpeiVisuals();
-    addBadge();
-  }
+	    patchSpeiVisuals();
+	    patchSpeiReferenceLayout();
+	    addBadge();
+	  }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', run);
   else run();
