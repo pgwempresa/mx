@@ -403,8 +403,10 @@
       '.mx-lab-clabe-input{width:100%!important;height:44px!important;border:2px solid #E5E7EB!important;border-radius:10px!important;padding:0 12px!important;font-size:15px!important;color:#111827!important;background:#fff!important;outline:none!important}',
       '.mx-lab-clabe-input:focus{border-color:#1877F2!important}',
       '.mx-lab-reference-text{display:block!important;max-width:100%!important;min-width:0!important;white-space:normal!important;overflow-wrap:anywhere!important;word-break:break-all!important;line-height:1.35!important}',
-      '.mx-lab-reference-box{max-width:100%!important;min-width:0!important;overflow:hidden!important;box-sizing:border-box!important}',
+      '.mx-lab-reference-box{max-width:100%!important;min-width:0!important;overflow:hidden!important;box-sizing:border-box!important;display:block!important;text-align:left!important}',
       '.mx-lab-reference-box *{min-width:0!important;max-width:100%!important}',
+      '.mx-lab-reference-box .mx-lab-reference-text{font-size:14px!important}',
+      '.mx-lab-copy-reference-btn{width:100%!important;height:48px!important;border:0!important;border-radius:12px!important;background:#1877F2!important;color:#fff!important;font-size:15px!important;font-weight:800!important;display:flex!important;align-items:center!important;justify-content:center!important;margin:12px 0 0!important;box-shadow:none!important;cursor:pointer!important}',
       'button:has(img[src*="spei-logo"]) + button:has(img[src*="spei-logo"]){display:none!important}',
       'button:has(img[alt="SPEI"]) + button:has(img[alt="SPEI"]){display:none!important}'
     ].join('\n');
@@ -849,6 +851,7 @@
 
   function patchSpeiReferenceLayout() {
     var reference = getCurrentSpeiReference();
+    var referenceBox = null;
     document.querySelectorAll('p,span,div,strong').forEach(function (el) {
       if (el.children.length > 2) return;
       var text = (el.textContent || '').trim();
@@ -858,9 +861,42 @@
       reference = reference || found;
       el.classList.add('mx-lab-reference-text');
       var box = el.closest('div');
-      if (box) box.classList.add('mx-lab-reference-box');
+      if (box) {
+        box.classList.add('mx-lab-reference-box');
+        referenceBox = referenceBox || box;
+      }
     });
     reference = reference || getCurrentSpeiReference();
+    if (referenceBox && referenceBox.textContent && /Banco:|Referencia:/i.test(referenceBox.textContent)) {
+      var bankName = 'STP (Sistema de Transferencia y Pagos)';
+      var bankMatch = referenceBox.textContent.match(/Banco:\s*([^R]+?)(?:Referencia:|$)/i);
+      if (bankMatch && bankMatch[1] && bankMatch[1].trim().length > 3) bankName = bankMatch[1].trim();
+      referenceBox.innerHTML =
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px">' +
+        '<span style="color:#64748b;font-size:16px;line-height:1.25">Banco:</span>' +
+        '<strong style="color:#0f172a;font-size:15px;line-height:1.25;text-align:right;max-width:220px;overflow-wrap:anywhere">' + escapeHtml(bankName) + '</strong>' +
+        '</div>' +
+        '<div style="display:block">' +
+        '<span style="display:block;color:#64748b;font-size:16px;line-height:1.25;margin-bottom:4px">Referencia:</span>' +
+        '<strong class="mx-lab-reference-text" style="color:#0f172a;font-size:15px;line-height:1.3">' + escapeHtml(reference) + '</strong>' +
+        '</div>';
+    }
+    if (reference && referenceBox) {
+      var paymentCard = referenceBox.closest('section') || referenceBox.parentElement;
+      while (paymentCard && paymentCard !== document.body && !/PAGUE VIA SPEI|PAGA VIA SPEI|PAGA POR SPEI/i.test(paymentCard.textContent || '')) {
+        paymentCard = paymentCard.parentElement;
+      }
+      var host = paymentCard && paymentCard !== document.body ? paymentCard : referenceBox.parentElement;
+      if (host && !host.querySelector('.mx-lab-copy-reference-btn')) {
+        var copyButton = document.createElement('button');
+        copyButton.type = 'button';
+        copyButton.className = 'mx-lab-copy-reference-btn';
+        copyButton.setAttribute('data-mx-lab-copy', '1');
+        copyButton.setAttribute('data-mx-lab-reference', reference);
+        copyButton.textContent = 'Copiar referencia SPEI';
+        referenceBox.insertAdjacentElement('afterend', copyButton);
+      }
+    }
     document.querySelectorAll('button').forEach(function (button) {
       var text = (button.textContent || '').replace(/\s+/g, ' ').trim();
       if (!/copiar.*(?:referencia|spei)|(?:referencia|spei).*copiar/i.test(text)) return;
