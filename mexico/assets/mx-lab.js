@@ -397,7 +397,6 @@
       '<section style="background:#0f172a;color:#fff;border-radius:20px;padding:16px;margin-top:18px;text-align:center">',
       '<p style="font-size:13px;line-height:1.45;margin:0">Mantén disponible tu cuenta SPEI' + (clabe ? ' terminada en ' + escapeHtml(clabe.slice(-4)) : '') + '. Si hay demora, espera la ventana de validacion bancaria de 24 horas.</p>',
       '</section>',
-      '<a href="/mexico?mx_lab=1" style="display:flex;height:52px;border-radius:16px;background:#1877F2;color:#fff;text-decoration:none;align-items:center;justify-content:center;font-weight:900;font-size:15px;margin-top:28px">Volver al inicio</a>',
       '</main>'
     ].join('');
     addBadge();
