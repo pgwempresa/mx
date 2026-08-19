@@ -4,7 +4,7 @@
 	  document.documentElement.lang = 'es-MX';
 
   var priceMap = {
-    front: 199.9,
+    front: 200,
     back: 100,
     up1: 89.9,
     up2: 149.9,
@@ -1037,8 +1037,8 @@
       value = value.replace(/\$1,218(?:\.00)? MXN\s*800,00/g, '$58,800 MXN');
       value = value.replace(/\$1,218(?:\.00)? MXN\s*800/g, '$58,800 MXN');
       value = value.replace(/\$1,234\.80 MXN/g, '$58,800.00 MXN');
-      value = value.replace(/\$192\.32 MXN/g, '$199.90 MXN');
-      value = value.replace(/\$197\.23 MXN/g, '$199.90 MXN');
+      value = value.replace(/\$192\.32 MXN/g, '$200.00 MXN');
+      value = value.replace(/\$197\.23 MXN/g, '$200.00 MXN');
       value = value.replace(/\$1,938\.72 MXN/g, '$97.23 MXN');
       value = value.replace(/\$2,041\.83 MXN/g, '$97.23 MXN');
       value = value.replace(/\$2,098\.95 MXN/g, '$99.95 MXN');
