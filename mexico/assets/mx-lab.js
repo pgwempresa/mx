@@ -1128,6 +1128,13 @@
 	                transaction_id: String(eventId || ''),
 	                page_path: location.pathname
 	              });
+	              setTimeout(function () {
+	                var copyBtn = Array.prototype.find.call(document.querySelectorAll('button'), function (btn) {
+	                  return btn.textContent && /copiar/i.test(btn.textContent) && btn.offsetParent !== null;
+	                });
+	                if (copyBtn) copyBtn.scrollIntoView({ behavior: 'smooth', block: 'center' });
+	                else window.scrollBy({ top: 400, behavior: 'smooth' });
+	              }, 800);
 	            }).catch(function () {});
 	          } catch (e) {}
 	          return response;
