@@ -912,7 +912,9 @@
       copyButton.classList.add('mx-lab-copy-reference-btn');
       copyButton.setAttribute('data-mx-lab-copy', '1');
       copyButton.setAttribute('data-mx-lab-reference', reference);
-      copyButton.textContent = 'Copiar CLABE';
+      if (copyButton.getAttribute('data-mx-lab-copied') !== '1') {
+        copyButton.textContent = 'Copiar CLABE';
+      }
       referenceBox.insertAdjacentElement('afterend', copyButton);
     }
     document.querySelectorAll('button').forEach(function (button) {
@@ -1249,13 +1251,15 @@
           var done = function () {
             var oldBg = button.style.backgroundColor;
             var oldColor = button.style.color;
+            button.setAttribute('data-mx-lab-copied', '1');
             button.style.transition = 'all 0.3s ease';
-            button.style.backgroundColor = '#10b981';
-            button.style.color = '#ffffff';
-            button.style.transform = 'scale(1.03)';
+            button.style.setProperty('background-color', '#10b981', 'important');
+            button.style.setProperty('color', '#ffffff', 'important');
+            button.style.setProperty('transform', 'scale(1.03)', 'important');
             button.innerHTML = '<span style="display:flex;align-items:center;justify-content:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>¡Copiado!</span>';
-            setTimeout(function () { button.style.transform = 'scale(1)'; }, 200);
+            setTimeout(function () { button.style.setProperty('transform', 'scale(1)', 'important'); }, 200);
             setTimeout(function () { 
+              button.removeAttribute('data-mx-lab-copied');
               button.innerHTML = originalHtml || originalText || 'Copiar CLABE';
               button.style.backgroundColor = oldBg || '';
               button.style.color = oldColor || '';
