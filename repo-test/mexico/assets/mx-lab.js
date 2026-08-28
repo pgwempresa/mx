@@ -88,9 +88,6 @@
       if (currentParams.get('offer') === 'back' && Math.abs(currentAmount - 100) < 0.01) {
         currentParams.set('amount', priceMap.back.toFixed(2));
         history.replaceState(null, '', location.pathname + '?' + currentParams.toString() + location.hash);
-      } else if (Math.abs(currentAmount - 200) < 0.01) {
-        currentParams.set('amount', priceMap.front.toFixed(2));
-        history.replaceState(null, '', location.pathname + '?' + currentParams.toString() + location.hash);
       }
     } catch (e) {}
     try {
@@ -108,10 +105,7 @@
           var saved = JSON.parse(raw);
           if (!saved || typeof saved !== 'object') return;
           var amount = Number(saved.amount || 0);
-          if (Math.abs(amount - 200) < 0.01) {
-            saved.amount = priceMap.front;
-            saved.amountInCents = Math.round(priceMap.front * 100);
-          } else if (Math.abs(amount - 100) < 0.01 && saved.source === 'back-redirect') {
+          if (Math.abs(amount - 100) < 0.01 && saved.source === 'back-redirect') {
             saved.amount = priceMap.back;
             saved.amountInCents = Math.round(priceMap.back * 100);
           }
@@ -951,7 +945,6 @@
     nodes.forEach(function (node) {
       var value = node.nodeValue;
       if (!value) return;
-      value = value.replace(/\$200(?:\.00)?\s*MXN/g, money(priceMap.front));
       if (isMexicoBackRedirectPage()) {
         var parentText = node.parentElement ? (node.parentElement.textContent || '') : '';
         var isOriginalPrice = node.parentElement && node.parentElement.classList && node.parentElement.classList.contains('line-through');
@@ -1140,10 +1133,9 @@
           var backOffer = backRaw ? JSON.parse(backRaw) : null;
           var isBackOffer = params.get('offer') === 'back' || (backOffer && backOffer.source === 'back-redirect');
           if (isBackOffer) apiAmount = priceMap.back;
-          else if (Math.abs(apiAmount - 200) < 0.01) apiAmount = priceMap.front;
           else if (!Number.isFinite(apiAmount) || apiAmount <= 0) apiAmount = priceMap.front;
         } catch (e) {
-          if (Math.abs(apiAmount - 200) < 0.01) apiAmount = priceMap.front;
+          if (!Number.isFinite(apiAmount) || apiAmount <= 0) apiAmount = priceMap.front;
         }
 	        var payload = Object.assign({}, input, {
 	          method: 'spei',
