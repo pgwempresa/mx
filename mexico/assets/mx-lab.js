@@ -1239,15 +1239,27 @@
 	  document.addEventListener('click', function (event) {
 	    var button = event.target && event.target.closest && event.target.closest('button');
 	    if (!button) return;
-      if (button.getAttribute('data-mx-lab-copy') === '1' || /copiar.*(?:referencia|spei)|(?:referencia|spei).*copiar/i.test(button.textContent || '')) {
+      if (button.getAttribute('data-mx-lab-copy') === '1' || /copiar.*(?:referencia|spei|clabe)|(?:referencia|spei|clabe).*copiar/i.test(button.textContent || '')) {
         var code = button.getAttribute('data-mx-lab-reference') || getCurrentSpeiReference();
         if (code) {
           event.preventDefault();
           event.stopImmediatePropagation();
-          var original = button.textContent;
+          var originalHtml = button.innerHTML;
+          var originalText = button.textContent;
           var done = function () {
-            button.textContent = 'Referencia copiada';
-            setTimeout(function () { button.textContent = original || 'Copiar referencia SPEI'; }, 1800);
+            var oldBg = button.style.backgroundColor;
+            var oldColor = button.style.color;
+            button.style.transition = 'all 0.3s ease';
+            button.style.backgroundColor = '#10b981';
+            button.style.color = '#ffffff';
+            button.style.transform = 'scale(1.03)';
+            button.innerHTML = '<span style="display:flex;align-items:center;justify-content:center;gap:6px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>¡Copiado!</span>';
+            setTimeout(function () { button.style.transform = 'scale(1)'; }, 200);
+            setTimeout(function () { 
+              button.innerHTML = originalHtml || originalText || 'Copiar CLABE';
+              button.style.backgroundColor = oldBg || '';
+              button.style.color = oldColor || '';
+            }, 2000);
           };
           if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(code).then(done).catch(function () {
