@@ -83,6 +83,15 @@
       if (/method=mbway/i.test(location.search)) {
         history.replaceState(null, '', location.pathname + location.search.replace(/method=mbway/ig, 'method=spei'));
       }
+      var currentParams = new URLSearchParams(location.search || '');
+      var currentAmount = Number(currentParams.get('amount') || 0);
+      if (currentParams.get('offer') === 'back' && Math.abs(currentAmount - 100) < 0.01) {
+        currentParams.set('amount', priceMap.back.toFixed(2));
+        history.replaceState(null, '', location.pathname + '?' + currentParams.toString() + location.hash);
+      } else if (Math.abs(currentAmount - 200) < 0.01) {
+        currentParams.set('amount', priceMap.front.toFixed(2));
+        history.replaceState(null, '', location.pathname + '?' + currentParams.toString() + location.hash);
+      }
     } catch (e) {}
     try {
       sessionStorage.setItem('ttk_preserved_query', 'mx_lab=1');
@@ -92,6 +101,23 @@
         MBWAYKey: 'CLABE',
         customerData: { name: '', method: 'spei' }
       }));
+      ['ttk_pending_offer', 'ttk_back_redirect_offer'].forEach(function (key) {
+        var raw = sessionStorage.getItem(key);
+        if (!raw) return;
+        try {
+          var saved = JSON.parse(raw);
+          if (!saved || typeof saved !== 'object') return;
+          var amount = Number(saved.amount || 0);
+          if (Math.abs(amount - 200) < 0.01) {
+            saved.amount = priceMap.front;
+            saved.amountInCents = Math.round(priceMap.front * 100);
+          } else if (Math.abs(amount - 100) < 0.01 && saved.source === 'back-redirect') {
+            saved.amount = priceMap.back;
+            saved.amountInCents = Math.round(priceMap.back * 100);
+          }
+          sessionStorage.setItem(key, JSON.stringify(saved));
+        } catch (e) {}
+      });
       localStorage.setItem('withdrawMethod', 'multibanco');
       localStorage.removeItem('pending_mbway');
     } catch (e) {}
