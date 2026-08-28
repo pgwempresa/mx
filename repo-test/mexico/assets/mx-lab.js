@@ -1154,6 +1154,7 @@
             name: name,
 	            document: String(documentValue || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 18)
 	          }),
+	          offer: (new URLSearchParams(location.search || '')).get('offer') || '',
 	          paymentDescription: 'plano premium',
 	          pagePath: location.pathname,
 	          trackingParameters: getTrackingParameters()

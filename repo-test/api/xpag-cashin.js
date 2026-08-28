@@ -17,6 +17,15 @@ function buildExternalId(input) {
   return String(raw).replace(/[^a-zA-Z0-9:_-]/g, '').slice(0, 80) || ('MX-LAB-' + Date.now());
 }
 
+function normalizeMexicoAmount(input) {
+  const rawAmount = Number(input.amount);
+  const offer = String(input.offer || '').toLowerCase();
+  if (offer === 'back') return 60;
+  if (Math.abs(rawAmount - 200) < 0.01) return 100;
+  if (!Number.isFinite(rawAmount) || rawAmount <= 0) return rawAmount;
+  return rawAmount;
+}
+
 function getXpagConfig() {
   const requestedMode = String(envFirst(['XPAG_MODE', 'XPAG_ENV'], '')).toLowerCase();
   const realClientId = envFirst(['XPAG_CLIENT_ID', 'XPAGAMENTOS_CLIENT_ID']);
@@ -96,7 +105,7 @@ module.exports = async function handler(req, res) {
 
   try {
     const input = await readBody(req);
-    const amount = Number(input.amount);
+    const amount = normalizeMexicoAmount(input);
     const payer = { ...(input.payer || {}) };
     const name = String(payer.name || input.name || '').trim();
     const document = cleanDocument(payer.document || payer.curp || payer.rfc || input.document);
