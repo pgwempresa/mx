@@ -1,0 +1,16 @@
+{
+  "rewrites": [
+    { "source": "/assets/(.*)", "destination": "/assets/$1" },
+    { "source": "/mexico/assets/(.*)", "destination": "/mexico/assets/$1" },
+    { "source": "/api/xpag-cashin.php", "destination": "/api/xpag-cashin.js" },
+    { "source": "/api/xpag-status.php", "destination": "/api/xpag-status.js" },
+    { "source": "/api/xpag-webhook.php", "destination": "/api/xpag-webhook.js" },
+    { "source": "/mexico", "destination": "/mexico/index.html" },
+    { "source": "/mexico/(.*)", "destination": "/mexico/index.html" },
+    { "source": "/central.php", "destination": "/central.js" },
+    { "source": "/checkout", "destination": "/index.html" },
+    { "source": "/checkout/", "destination": "/index.html" },
+    { "source": "/obrigado", "destination": "/index.html" },
+    { "source": "/obrigado/", "destination": "/index.html" }
+  ]
+}

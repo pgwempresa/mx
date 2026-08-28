@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="es-MX">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Mexico</title>
+  <!-- Meta Pixel Code -->
+  <script>
+    !function(f,b,e,v,n,t,s)
+    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+    n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];
+    s.parentNode.insertBefore(t,s)}(window, document,'script',
+    'https://connect.facebook.net/en_US/fbevents.js');
+    window.__META_PIXEL_ID__ = '1086479710990273';
+    fbq('init', window.__META_PIXEL_ID__);
+    fbq('track', 'PageView');
+  </script>
+  <noscript><img height="1" width="1" style="display:none"
+  src="https://www.facebook.com/tr?id=1086479710990273&ev=PageView&noscript=1"
+  /></noscript>
+  <!-- End Meta Pixel Code -->
+  <script>
+    window.__mxLastError = "";
+    window.addEventListener("error", function (event) {
+      window.__mxLastError = event.message || String(event.error || "Erro desconhecido");
+    });
+    window.addEventListener("unhandledrejection", function (event) {
+      window.__mxLastError = (event.reason && (event.reason.message || event.reason.stack)) || String(event.reason || "Promise rejeitada");
+    });
+  </script>
+  <script>
+    (function () {
+      var h = window.location.hostname;
+      var o = window.location.origin || (window.location.protocol + "//" + h + (window.location.port ? ":" + window.location.port : ""));
+      document.write('<base href="' + o + '/">');
+      document.write('<link rel="stylesheet" crossorigin href="/mexico/assets/index-Bzh8CIQh.css">');
+      window.__MX_LAB_MODE__ = true;
+      window.__TTK_PRESERVED_QUERY = "mx_lab=1";
+      try {
+        sessionStorage.setItem("ttk_preserved_query", "mx_lab=1");
+        sessionStorage.setItem("ttk_confirmar_state", JSON.stringify({
+          amount: "58800",
+          paymentKeyType: "spei",
+          paymentKey: "CLABE",
+          customerData: { name: "", method: "spei" }
+        }));
+        localStorage.setItem("withdrawMethod", "spei");
+        localStorage.removeItem("pending_spei");
+        localStorage.removeItem("spei_payer");
+      } catch (e) {}
+      var query = new URLSearchParams(location.search || "");
+      query.set("mx_lab", "1");
+      if (location.pathname.indexOf("/confirmar-saque") !== -1) query.set("method", "spei");
+      var nextPath = location.pathname;
+      history.replaceState(null, "", nextPath + "?" + query.toString());
+    })();
+  </script>
+  <script src="/mexico/assets/mx-lab.js?v=mx-front-100-back-60"></script>
+  <script>
+    (function () {
+      var s = document.createElement("script");
+      s.type = "module";
+      s.crossOrigin = "anonymous";
+      s.src = "/mexico/assets/index-mexico-v2.js";
+      document.head.appendChild(s);
+    })();
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+</body>
+
+</html>
