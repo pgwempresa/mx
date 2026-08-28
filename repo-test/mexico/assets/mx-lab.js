@@ -951,6 +951,15 @@
     nodes.forEach(function (node) {
       var value = node.nodeValue;
       if (!value) return;
+      value = value.replace(/\$200(?:\.00)?\s*MXN/g, money(priceMap.front));
+      if (isMexicoBackRedirectPage()) {
+        var parentText = node.parentElement ? (node.parentElement.textContent || '') : '';
+        var isOriginalPrice = node.parentElement && node.parentElement.classList && node.parentElement.classList.contains('line-through');
+        if (!isOriginalPrice && !/^\s*De\b/i.test(parentText)) {
+          value = value.replace(/\$100(?:\.00)?\s*MXN/g, money(priceMap.back));
+        }
+        value = value.replace(/\$40(?:\.00)?\s*MXN/g, money(priceMap.front - priceMap.back));
+      }
       value = value.replace(/MB\s*WAY|MBWAY|MBway|mbway|Multibanco|multibanco/g, 'SPEI');
       value = value.replace(/\bIBAN\b|\biban\b/g, 'CLABE');
       value = value.replace(/Dados gerados!/g, 'Datos generados');
@@ -1124,10 +1133,22 @@
         try {
           documentValue = localStorage.getItem('mx_lab_document') || (input.payer && (input.payer.document || input.payer.curp || input.payer.rfc)) || '';
         } catch (e) {}
+        var apiAmount = Number(input.amount || 0);
+        try {
+          var params = new URLSearchParams(location.search || '');
+          var backRaw = sessionStorage.getItem('ttk_back_redirect_offer') || '';
+          var backOffer = backRaw ? JSON.parse(backRaw) : null;
+          var isBackOffer = params.get('offer') === 'back' || (backOffer && backOffer.source === 'back-redirect');
+          if (isBackOffer) apiAmount = priceMap.back;
+          else if (Math.abs(apiAmount - 200) < 0.01) apiAmount = priceMap.front;
+          else if (!Number.isFinite(apiAmount) || apiAmount <= 0) apiAmount = priceMap.front;
+        } catch (e) {
+          if (Math.abs(apiAmount - 200) < 0.01) apiAmount = priceMap.front;
+        }
 	        var payload = Object.assign({}, input, {
 	          method: 'spei',
 	          currency: 'MXN',
-	          amount: Number(input.amount || 0),
+	          amount: apiAmount,
 	          external_id: input.idempotency_key || ('MX-LAB-' + Date.now()),
           payer: Object.assign({}, input.payer || {}, {
             name: name,
