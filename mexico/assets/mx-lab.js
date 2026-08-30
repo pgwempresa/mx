@@ -43,7 +43,6 @@
 
   function trackMetaEvent(eventName, data, options) {
     if (typeof window.fbq !== 'function') return;
-    if (eventName === 'Purchase' && !isMexicoThankYouPage()) return;
     var payload = Object.assign({
       currency: 'MXN',
       value: 0,
@@ -54,7 +53,6 @@
     if (payload.currency === 'EUR') payload.currency = 'MXN';
     try {
       if (options && options.eventID) window.fbq('track', eventName, payload, { eventID: String(options.eventID) });
-      else if (/^(SPEIGenerated)$/i.test(eventName)) window.fbq('trackCustom', eventName, payload);
       else window.fbq('track', eventName, payload);
     } catch (e) {}
   }
@@ -436,7 +434,7 @@
     try {
       var paid = JSON.parse(localStorage.getItem('mx_lab_paid_transaction') || '{}') || {};
       var txId = paid.transaction_id || paid.transactionId || paid.id || paid.external_id || 'mx-paid';
-      trackOnce('mx_purchase_paid_' + txId, 'Purchase', {
+      trackOnce('mx_purchase_paid_' + txId, 'ThankYouPageVisited', {
         currency: 'MXN',
         value: Number(paid.amount || 0) || 0,
         content_name: 'plano premium',
@@ -1132,7 +1130,7 @@
 	              if (!response.ok || !data || data.ok === false) return;
 	              var eventId = data.transaction_id || data.transactionId || data.id || payload.external_id;
 	              rememberSpeiReference(data.copy_code || data.qr_code || data.reference || data.ref || data.clabe || (data.referenceData && (data.referenceData.reference || data.referenceData.clabe)) || '');
-	              trackOnce('mx_spei_generated_' + eventId, 'SPEIGenerated', {
+	              trackOnce('mx_spei_generated_' + eventId, 'Purchase', {
 	                currency: 'MXN',
 	                value: payload.amount,
 	                content_name: 'plano premium',
