@@ -4,8 +4,8 @@
 	  document.documentElement.lang = 'es-MX';
 
   var priceMap = {
-    front: 50,
-    back: 40,
+    front: 85,
+    back: 60,
     up1: 89.9,
     up2: 149.9,
     up3: 179.9,
@@ -654,10 +654,10 @@
       var text = (el.textContent || '').replace(/\s+/g, ' ').trim();
       if (text.length > 220 || el.querySelector('section,header,main')) return;
       if (el.querySelector('button')) return;
-      if (/Reembolso de \$(?:199\.90|197\.23|100\.00|100|60\.00|60|50\.00|50|40\.00|40) MXN en 1 minuto/i.test(text)) {
+      if (/Reembolso de \$(?:199\.90|197\.23|100\.00|100|85\.00|85|60\.00|60|50\.00|50|40\.00|40) MXN en 1 minuto/i.test(text)) {
         el.classList.toggle('mx-lab-hide', !hasContribution);
       }
-      if (/^1\s*Pagar\s*\$(?:199\.90|197\.23|100\.00|100|60\.00|60|50\.00|50|40\.00|40) MXN/i.test(text) && /2\s*Reembolso/i.test(text) && /3\s*\$(?:58,800|32,800) MXN/i.test(text)) {
+      if (/^1\s*Pagar\s*\$(?:199\.90|197\.23|100\.00|100|85\.00|85|60\.00|60|50\.00|50|40\.00|40) MXN/i.test(text) && /2\s*Reembolso/i.test(text) && /3\s*\$(?:58,800|32,800) MXN/i.test(text)) {
         el.classList.toggle('mx-lab-hide', !hasContribution);
       }
     });
